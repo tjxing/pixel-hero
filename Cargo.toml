@@ -1,0 +1,45 @@
+[package]
+name = "pixel-hero"
+version = "0.1.0"
+authors = ["Tang Jiaxing <tangjiaxing1988@163.com>"]
+edition = "2018"
+description = "A library to create NES emulator with WebAssembly"
+license = "MIT"
+repository = "https://github.com/tjxing/pixel-hero"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook"]
+
+[dependencies]
+wasm-bindgen = "0.2.63"
+console_error_panic_hook = { version = "0.1.6", optional = true }
+wee_alloc = { version = "0.4.5", optional = true }
+js-sys = "0.3.55"
+
+[dependencies.web-sys]
+version = "0.3.55"
+features = [
+    'Document',
+    'Element',
+    'HtmlElement',
+    'HtmlCanvasElement',
+    'HtmlDivElement',
+    'Node',
+    'Window',
+    'Navigator',
+    'CssStyleDeclaration',
+    'CanvasRenderingContext2d',
+    'ImageData',
+]
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.13"
+
+[build-dependencies]
+toml = "0.5"
+
+[profile.release]
+opt-level = "s"

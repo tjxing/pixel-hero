@@ -1,0 +1,6 @@
+[zh-CN]
+GlobalObjectNotExists = "全局变量{}不存在"
+CreateElementError = "创建元素{}出错"
+CanvasContextError = "获取画布上下文出错"
+CartridgeAlreadyInserted = "其他的卡带正在运行，不能插入新的卡带"
+MalformedFileFormat = "游戏文件格式错误"

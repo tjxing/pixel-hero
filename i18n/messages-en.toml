@@ -1,0 +1,6 @@
+[default]
+GlobalObjectNotExists = "Global object '{}' not exists"
+CreateElementError = "Failed to create element {}"
+CanvasContextError = "Failed to get canvas context"
+CartridgeAlreadyInserted = "Cannot insert the cartridge because another cartridge is already inserted"
+MalformedFileFormat = "Malformed file format"
