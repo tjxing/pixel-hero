@@ -1,5 +1,6 @@
 use crate::rom::mapper::Mapper;
 use crate::rom::slice::Slice;
+use crate::log::console_log;
 
 const K: u16 = 1024;
 const BANK_SIZE: u16 = 8 * K;
@@ -37,7 +38,5 @@ impl Mapper for Mapper003 {
         self.chr_rom.at(self.bank as u32 * BANK_SIZE as u32 + addr as u32)
     }
 
-    fn write_chr(&mut self, _addr: u16, _value: u8) {
-
-    }
+    fn write_chr(&mut self, _addr: u16, _value: u8) {}
 }

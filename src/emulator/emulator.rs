@@ -44,33 +44,10 @@ impl Emulator {
         let timer = window().unwrap()
             .set_interval_with_callback_and_timeout_and_arguments_0(
                 self.frame.as_ref().unwrap().as_ref().unchecked_ref::<Function>(),
-                1000
+                5000
                 //(1000f64 / fps).floor() as i32
             ).unwrap();
         self.timer = Some(timer);
-
-        // for i in 0..16 as usize {
-        //     for j in 0..16 as usize {
-        //         let base = (i << 4) | (j << 8) | 0x1000;
-        //         for n in 0..8 as usize {
-        //             let low = self.bus.as_ref().borrow().read_ppu((base + n) as u16);
-        //             let high = self.bus.as_ref().borrow().read_ppu(((base + n) as u16) | 0x08);
-        //             for m in 0..8 as usize {
-        //                 let w = 8 * i + m;
-        //                 let h = 8 * j + n;
-        //                 let data = (((low >> (7 -m)) & 0x01) | (((high >> (7 - m)) & 0x01) << 1)) * 85;
-        //                 self.bus.as_ref().borrow_mut().ppu_mut().draw(w, h, data, data, data);
-        //             }
-        //         }
-        //     }
-        // }
-        // self.bus.as_ref().borrow().ppu().render();
-        //
-        //
-        // for i in 0x800D..0x801F {
-        //     let data = self.bus.borrow_mut().read(i as u16);
-        //     console_log(std::format!("0x{:X}", data).as_str());
-        // }
     }
 
     pub fn stop(&mut self) {
@@ -121,11 +98,17 @@ fn wait_ppu(bus: &mut Bus, instructions: &InstructionSet) {
 fn make_frame(mut bus: Bus, instructions: InstructionSet) -> Closure<dyn FnMut()> {
     Closure::wrap(Box::new(move || {
         loop {
-            bus.check_interrupt();
-            let inst = current_instruction(&mut bus, &instructions);
-            let cpu_cycles = inst.apply(&mut bus) as u16;
-            if bus.ppu_mut().ticks(3 * cpu_cycles) {
-                break
+            let dma_clk = bus.check_dma();
+            let finish = if dma_clk > 0 {
+                bus.ppu_ticks(3 * dma_clk)
+            } else {
+                bus.check_interrupt();
+                let inst = current_instruction(&mut bus, &instructions);
+                let cpu_cycles = inst.apply(&mut bus);
+                bus.ppu_ticks(3 * cpu_cycles)
+            };
+            if finish {
+                break;
             }
         }
     }) as Box<dyn FnMut()>)

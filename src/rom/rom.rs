@@ -2,17 +2,13 @@ use crate::i18n::Message;
 use std::rc::Rc;
 use super::slice::Slice;
 use crate::rom::mapper::{find_mapper, Mapper};
+use crate::log::console_log;
 
 const K: u32 = 1024;
 
 enum Version {
     V1 = 1,
     V2 = 2
-}
-
-enum Mirroring {
-    Horizontal,
-    Vertical
 }
 
 enum Console {
@@ -33,7 +29,7 @@ pub struct Rom {
     data: Rc<[u8]>,
     prg_rom_size: u32,
     chr_rom_size: u32,
-    mirroring: Option<Mirroring>,
+    mirroring: Option<u8>,
     extra_memory: bool,
     console: Console,
     version: Version,
@@ -65,10 +61,8 @@ impl Rom {
 
         let mirroring = if data[6] & 0x08 != 0 {
             None
-        } else if data[6] & 0x01 == 0 {
-            Some(Mirroring::Horizontal)
         } else {
-            Some(Mirroring::Vertical)
+            Some(data[6] & 0x01)
         };
         let extra_memory = data[6] & 0x02 != 0;
         let trainer_exists = data[6] & 0x04 != 0;
@@ -216,5 +210,9 @@ impl Rom {
 
     pub fn timing(&self) -> &Timing {
         &self.timing
+    }
+
+    pub fn mirroring(&self) -> Option<u8> {
+        self.mirroring
     }
 }

@@ -14,18 +14,20 @@ pub struct Bus {
     memory: Memory,
     registers: Registers,
     rom: Rom,
-    nmi_flag: bool
+    nmi_flag: bool,
+    dma_clk: u16
 }
 
 impl Bus {
     pub fn new(rom: Rom, ctx: CanvasRenderingContext2d, conf: &Configuration) -> Bus {
         let mut bus = Bus {
             cpu: CPU::new(),
-            ppu: PPU::new(ctx),
+            ppu: PPU::new(ctx, &rom),
             memory: Memory::new(),
             registers: Registers::new(),
             rom,
-            nmi_flag: false
+            nmi_flag: false,
+            dma_clk: 0
         };
         let pc = bus.read(0xFFFC) as u16 | (bus.read(0xFFFD) as u16) << 8;
         bus.cpu.goto(pc);
@@ -52,16 +54,17 @@ impl Bus {
             self.memory.write(addr, v);
         } else if mark == 0x2000 || mark == 0x3000 {
             let index = (addr & 0x07) as u8;
-            if self.ppu.write_register(index, v) {
+            if self.ppu.write_register(index, v, &mut self.rom) {
                 self.nmi_flag = true;
             }
         } else if addr < 0x401F {
             if addr == 0x4014 {
                 let base = (v as u16) << 8;
                 for i in 0x00..0xFF as u16 {
-                    let v = self.read(base + i);
+                    let v = self.read(base | i);
                     self.ppu.fill_oam(v);
                 }
+                self.dma_clk = 513;
             } else {
                 self.registers.write(addr, v);
             }
@@ -174,20 +177,44 @@ impl Bus {
         (low as u16) | ((high as u16) << 8)
     }
 
-    pub fn nmi_flag(&self) -> bool {
-        self.nmi_flag
+    pub fn ppu_ticks(&mut self, t: u8) -> bool {
+        let result = self.ppu.ticks(t, &self.rom);
+        if result.1 {
+            self.nmi_flag = true;
+        }
+        result.0
     }
 
     pub fn nmi(&mut self) {
+        let p = self.cpu.pc();
+
         let pc = (self.read(0xFFFA) as u16) | ((self.read(0xFFFB) as u16) << 8);
         self.push_word(self.cpu.pc());
         self.push(self.cpu.p());
         self.cpu.goto(pc);
         self.nmi_flag = false;
+
+        for i in 0..100 as u16 {
+            let x = self.read(p + i);
+            console_log(std::format!("0x{:X}", x).as_str());
+        }
     }
 
     pub fn check_interrupt(&mut self) {
+        if self.nmi_flag {
+            self.nmi();
+        }
+    }
 
+    pub fn check_dma(&mut self) -> u8 {
+        if self.dma_clk >= 110 {
+            self.dma_clk -= 110;
+            110
+        } else {
+            let clk = self.dma_clk;
+            self.dma_clk = 0;
+            clk as u8
+        }
     }
 
     pub fn cpu(&self) -> &CPU {

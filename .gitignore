@@ -5,4 +5,7 @@ bin/
 pkg/
 wasm-pack.log
 example/node_modules/
+example/dist
+example/*.nes
 .idea/
+.vscode/

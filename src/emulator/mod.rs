@@ -9,4 +9,5 @@ mod registers;
 mod memory;
 mod bus;
 mod instruction;
+mod mirroring;
 
