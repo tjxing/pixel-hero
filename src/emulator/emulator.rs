@@ -44,7 +44,7 @@ impl Emulator {
         let timer = window().unwrap()
             .set_interval_with_callback_and_timeout_and_arguments_0(
                 self.frame.as_ref().unwrap().as_ref().unchecked_ref::<Function>(),
-                5000
+                1000
                 //(1000f64 / fps).floor() as i32
             ).unwrap();
         self.timer = Some(timer);

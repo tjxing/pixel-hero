@@ -193,11 +193,6 @@ impl Bus {
         self.push(self.cpu.p());
         self.cpu.goto(pc);
         self.nmi_flag = false;
-
-        for i in 0..100 as u16 {
-            let x = self.read(p + i);
-            console_log(std::format!("0x{:X}", x).as_str());
-        }
     }
 
     pub fn check_interrupt(&mut self) {
