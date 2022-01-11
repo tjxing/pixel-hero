@@ -11,4 +11,5 @@ mod bus;
 mod instruction;
 mod mirroring;
 mod ppu_registers;
+mod palette;
 

@@ -1,4 +1,5 @@
 use crate::rom::Rom;
+use crate::log::console_log;
 
 pub struct Mirroring {
     read: fn(u16, memory: &[u8], rom: &Rom) -> u8,
@@ -30,11 +31,21 @@ pub fn select_mirroring(rom: &Rom) -> Mirroring {
 }
 
 fn horizontal_mirroring_read(addr: u16, memory: &[u8], rom: &Rom) -> u8 {
-    memory[(addr & 0x0BFF) as usize]
+    let index = addr & 0x0BFF;
+    if index >= 0x0800 {
+        memory[(index - 0x0400) as usize]
+    } else {
+        memory[index as usize]
+    }
 }
 
 fn horizontal_mirroring_write(addr: u16, v: u8, memory: &mut [u8], rom: &mut Rom) {
-    memory[(addr & 0x0BFF) as usize] = v;
+    let index = addr & 0x0BFF;
+    if index >= 0x0800 {
+        memory[(index - 0x0400) as usize] = v;
+    } else {
+        memory[index as usize] = v;
+    }
 }
 
 fn vertical_mirroring_read(addr: u16, memory: &[u8], rom: &Rom) -> u8 {

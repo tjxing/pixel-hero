@@ -1,3 +1,5 @@
+use crate::log::console_log;
+
 pub struct Memory {
     values: [u8; 2048]
 }

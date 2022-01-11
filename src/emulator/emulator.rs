@@ -39,6 +39,11 @@ impl Emulator {
 
         wait_ppu(&mut bus, &inst);
 
+        // for i in 0..30 as u16 {
+        //     let x = bus.read(49780 + i);
+        //     console_log(std::format!("0x{:X}", x).as_str());
+        // }
+
         let frame = make_frame(bus, inst);
         self.frame = Some(frame);
         let timer = window().unwrap()

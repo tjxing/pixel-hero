@@ -6,6 +6,7 @@ use crate::rom::Rom;
 use crate::emulator::mirroring::{Mirroring, select_mirroring};
 use std::fmt::Write;
 use crate::emulator::ppu_registers::{PPUControl, PPUMask, PPUStatus};
+use crate::emulator::palette::Palette;
 
 const PPUCTRL: usize = 0;
 const PPUMASK: usize = 1;
@@ -40,10 +41,12 @@ struct Address {
 pub struct PPU {
     renderer: Renderer,
     memory: [u8; 2 * K],
+    data_buffer: u8,
     oam: [u8; 256],
     secondary_oam: [u8; 32],
     sprite_count: u8,
-    palette: [u8; 32],
+    oam_clear: bool,
+    palette: Palette,
     wait_cpu: bool,
     even: bool,
     ppu_ctrl: PPUControl,
@@ -66,8 +69,10 @@ impl PPU {
             oam: [0; 256],
             secondary_oam: [0; 32],
             sprite_count: 0,
-            palette: [0; 32],
+            oam_clear: false,
+            palette: Palette::new(),
             memory: [0; 2 * K],
+            data_buffer: 0,
             wait_cpu: true,
             even: true,
             ppu_ctrl: PPUControl::new(),
@@ -126,11 +131,13 @@ impl PPU {
                                 + pattern_index as u16 * 16 + line % 8;
                             let pattern_low = self.read(pattern_addr, rom);
                             let pattern_high = self.read(pattern_addr + 8, rom);
+
+                            let background_color = self.palette.read(0x3F00);
                             for i in 0..8 {
                                 let c = (((pattern_high >> (7 - i)) & 0x01) << 1)
                                     | ((pattern_low >> (7 - i)) & 0x01);
-                                let color: u8 = if c == 0 {
-                                    0x0F
+                                let color = if c == 0 {
+                                    background_color
                                 } else {
                                     self.read(palette_addr + c as u16 - 1, rom)
                                 };
@@ -141,9 +148,11 @@ impl PPU {
                         }
 
                         if self.ppu_mask.show_sprite() && line > 0 {
-                            if tick == 65 {
+                            if tick < 65 {
+                                self.oam_clear = true;
+                            } else if tick == 65 {
+                                self.oam_clear = false;
                                 self.detect_sprite(line as u8);
-                                console_log(std::format!("{}", self.sprite_count).as_str());
                             } else if tick > 256 && self.sprite_count > 0 {
                                 self.sprite_count -= 1;
 
@@ -228,22 +237,32 @@ impl PPU {
         }
     }
 
-    pub fn read_register(&mut self, index: u8) -> u8 {
+    pub fn read_register(&mut self, index: u8, rom: &Rom) -> u8 {
         let i = index as usize;
         //console_log(std::format!("read {}", index).as_str());
         match i {
             PPUSTATUS => {
                 let status = self.ppu_status.value();
                 self.ppu_status.set_vertical_blank(false);
+                self.address.high = true;
                 status
             },
             OAMDATA => {
-                self.oam[self.oam_addr as usize]
+                if self.oam_clear {
+                    0xFF
+                } else {
+                    self.oam[self.oam_addr as usize]
+                }
             },
             PPUDATA => {
-                let v = self.memory[self.address.addr as usize];
+                let v = self.read(self.address.addr, rom);
+                let buffer = self.data_buffer;
+                self.data_buffer = v;
                 self.address.addr += self.ppu_ctrl.vram_step();
-                v
+                if self.address.addr > 0x3EFF {
+                    self.address.addr -= 0x1F00;
+                }
+                buffer
             }
             _ => 0
         }
@@ -252,9 +271,14 @@ impl PPU {
     pub fn write_register(&mut self, index: u8, v: u8, rom: &mut Rom) -> bool {
         let i = index as usize;
         //console_log(std::format!("write {} {}", index, v).as_str());
+        let mut nmi = false;
         match i {
             PPUCTRL => if !self.wait_cpu {
+                let prev_nmi = self.ppu_ctrl.nmi();
                 self.ppu_ctrl.set(v);
+                if self.ppu_status.vertical_blank() && !prev_nmi && self.ppu_ctrl.nmi() {
+                    nmi = true;
+                }
             },
             PPUMASK => if !self.wait_cpu {
                 self.ppu_mask.set(v);
@@ -279,9 +303,9 @@ impl PPU {
             PPUADDR => if !self.wait_cpu {
                 let high = self.address.high;
                 if high {
-                    self.address.addr = (v as u16)  << 8;
+                    self.address.addr = ((v as u16)  << 8) | (self.address.addr & 0x00FF);
                 } else {
-                    self.address.addr |= v as u16;
+                    self.address.addr = (self.address.addr & 0xFF00) | v as u16;
                 }
                 self.address.high = !high;
             },
@@ -290,8 +314,8 @@ impl PPU {
                 self.address.addr += self.ppu_ctrl.vram_step();
             }
             _ => {}
-        }
-        self.ppu_status.vertical_blank() && self.ppu_ctrl.nmi()
+        };
+        nmi
     }
 
     fn read(&self, addr: u16, rom: &Rom) -> u8 {
@@ -302,7 +326,7 @@ impl PPU {
             let address = addr & 0x0FFF;
             (self.mirroring.read())(address, &self.memory, &rom)
         } else {
-            self.palette[(addr & 0x001F) as usize]
+            self.palette.read(addr)
         }
     }
 
@@ -312,9 +336,9 @@ impl PPU {
             rom.mapper_mut().write_chr(addr, v);
         } else if addr < 0x3EFF {
             let address = addr & 0x0FFF;
-            (self.mirroring.write())(address, v, &mut self.memory, rom)
+            (self.mirroring.write())(address, v, &mut self.memory, rom);
         } else {
-            self.palette[(addr & 0x001F) as usize] = v;
+            self.palette.write(addr, v);
         }
     }
 

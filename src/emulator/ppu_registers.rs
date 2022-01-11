@@ -148,4 +148,12 @@ impl PPUStatus {
             self.value &= 0xDF;
         }
     }
+
+    pub fn set_sprite_0_hit(&mut self, value: bool) {
+        if value {
+            self.value |= 0x40;
+        } else {
+            self.value &= 0xBF;
+        }
+    }
 }

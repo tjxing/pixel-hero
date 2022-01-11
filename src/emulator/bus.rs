@@ -40,7 +40,7 @@ impl Bus {
             self.memory.read(addr)
         } else if mark == 0x2000 || mark == 0x3000 {
             let index = (addr & 0x07) as u8;
-            self.ppu.read_register(index)
+            self.ppu.read_register(index, &self.rom)
         } else if addr < 0x401F {
             self.registers.read(addr)
         } else {
@@ -70,17 +70,6 @@ impl Bus {
             }
         } else {
             self.rom.mapper_mut().write_prg(addr, v);
-        }
-    }
-
-    pub fn read_ppu(&self, addr: u16) -> u8 {
-        let mark = addr & 0xF000;
-        if mark < 2 {
-            self.rom.mapper().read_chr(addr)
-        } else if mark == 2 {
-            1
-        } else {
-            1
         }
     }
 
@@ -186,8 +175,6 @@ impl Bus {
     }
 
     pub fn nmi(&mut self) {
-        let p = self.cpu.pc();
-
         let pc = (self.read(0xFFFA) as u16) | ((self.read(0xFFFB) as u16) << 8);
         self.push_word(self.cpu.pc());
         self.push(self.cpu.p());
