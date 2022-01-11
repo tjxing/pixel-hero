@@ -39,8 +39,8 @@ impl Emulator {
 
         wait_ppu(&mut bus, &inst);
 
-        // for i in 0..30 as u16 {
-        //     let x = bus.read(49780 + i);
+        // for i in 0..50 as u16 {
+        //     let x = bus.read(46752 + i);
         //     console_log(std::format!("0x{:X}", x).as_str());
         // }
 
@@ -49,8 +49,8 @@ impl Emulator {
         let timer = window().unwrap()
             .set_interval_with_callback_and_timeout_and_arguments_0(
                 self.frame.as_ref().unwrap().as_ref().unchecked_ref::<Function>(),
-                1000
-                //(1000f64 / fps).floor() as i32
+                //1000
+                (1000f64 / fps).floor() as i32
             ).unwrap();
         self.timer = Some(timer);
     }

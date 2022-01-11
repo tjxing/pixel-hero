@@ -5,8 +5,9 @@ use crate::log::console_log;
 use crate::rom::Rom;
 use crate::emulator::mirroring::{Mirroring, select_mirroring};
 use std::fmt::Write;
-use crate::emulator::ppu_registers::{PPUControl, PPUMask, PPUStatus};
+use crate::emulator::ppu_registers::{PPUControl, PPUMask, PPUStatus, PPUScroll, PPUAddress};
 use crate::emulator::palette::Palette;
+use crate::init::{RAW_WIDTH, RAW_HEIGHT};
 
 const PPUCTRL: usize = 0;
 const PPUMASK: usize = 1;
@@ -24,41 +25,36 @@ const PHRASE_POST_RENDER: Phrase = 2;
 const PHRASE_START_VBL: Phrase = 3;
 
 const SCANLINE_CLK: u32 = 341;
-
 const K: usize = 1024;
 
-struct ScrollPos {
-    x: u8,
-    y: u8,
-    to_x: bool
-}
-
-struct Address {
-    addr: u16,
-    high: bool
-}
 
 pub struct PPU {
     renderer: Renderer,
+
     memory: [u8; 2 * K],
     data_buffer: u8,
+    palette: Palette,
+
     oam: [u8; 256],
     secondary_oam: [u8; 32],
     sprite_count: u8,
     oam_clear: bool,
-    palette: Palette,
+    oam_addr: u8,
+    oam_index: usize,
+
     wait_cpu: bool,
     even: bool,
+
     ppu_ctrl: PPUControl,
     ppu_mask: PPUMask,
     ppu_status: PPUStatus,
-    oam_addr: u8,
-    oam_index: usize,
-    scroll: ScrollPos,
-    address: Address,
+    ppu_scroll: PPUScroll,
+    ppu_addr: PPUAddress,
+
     phrase: Phrase,
     phrase_clk: u32,
     clk_counter: u32,
+
     mirroring: Mirroring
 }
 
@@ -70,6 +66,8 @@ impl PPU {
             secondary_oam: [0; 32],
             sprite_count: 0,
             oam_clear: false,
+            oam_addr: 0,
+            oam_index: 0,
             palette: Palette::new(),
             memory: [0; 2 * K],
             data_buffer: 0,
@@ -78,17 +76,8 @@ impl PPU {
             ppu_ctrl: PPUControl::new(),
             ppu_mask: PPUMask::new(),
             ppu_status: PPUStatus::new(),
-            oam_addr: 0,
-            oam_index: 0,
-            scroll: ScrollPos {
-                x: 0,
-                y: 0,
-                to_x: true
-            },
-            address: Address {
-                addr: 0,
-                high: true
-            },
+            ppu_scroll: PPUScroll::new(),
+            ppu_addr: PPUAddress::new(),
             phrase: PHRASE_PRE_RENDER,
             phrase_clk: SCANLINE_CLK,
             clk_counter: 0,
@@ -113,42 +102,51 @@ impl PPU {
                     if tick > 0 {
                         let line = (self.clk_counter / SCANLINE_CLK) as u16;
 
-                        if self.ppu_mask.show_background() && tick < 257 && (tick % 8) == 0 {
-                            let nt_offset_x = (tick - 1) / 8;
-                            let nt_offset_y = line / 8;
+                        if self.ppu_mask.show_background() && tick < 257 {
+                            let mut x = tick - 1 + self.ppu_scroll.x() as u16;
+                            let mut y = line + self.ppu_scroll.y() as u16;
+                            let mut nt_base = self.ppu_ctrl.nt_base();
+                            if x >= RAW_WIDTH as u16 {
+                                x -= RAW_WIDTH as u16;
+                                nt_base ^= 0x0400;
+                            }
+                            if y >= RAW_HEIGHT as u16 {
+                                y -= RAW_HEIGHT as u16;
+                                nt_base ^= 0x0800;
+                            }
+
+                            let nt_offset_x = x / 8;
+                            let nt_offset_y = y / 8;
 
                             let attr = self.read(
-                                self.ppu_ctrl.nt_base() + 960 + nt_offset_y / 4 * 8 + nt_offset_x / 4,
-                                &rom);
+                                nt_base + 960 + nt_offset_y / 4 * 8 + nt_offset_x / 4,
+                                rom);
                             let attr_offset = nt_offset_x % 4 / 2 * 4 + nt_offset_y % 4 / 2 * 2;
                             let palette_index= (attr >> attr_offset) & 0x03;
-                            let palette_addr = 0x3F01 + 4 * palette_index as u16;
+                            let palette_addr = 0x3F00 + 4 * palette_index as u16;
 
                             let pattern_index = self.read(
-                                self.ppu_ctrl.nt_base() + nt_offset_y * 32 + nt_offset_x,
+                                nt_base + nt_offset_y * 32 + nt_offset_x,
                                 rom);
                             let pattern_addr = self.ppu_ctrl.background_pattern()
-                                + pattern_index as u16 * 16 + line % 8;
+                                + pattern_index as u16 * 16 + y % 8;
                             let pattern_low = self.read(pattern_addr, rom);
                             let pattern_high = self.read(pattern_addr + 8, rom);
 
-                            let background_color = self.palette.read(0x3F00);
-                            for i in 0..8 {
-                                let c = (((pattern_high >> (7 - i)) & 0x01) << 1)
-                                    | ((pattern_low >> (7 - i)) & 0x01);
-                                let color = if c == 0 {
-                                    background_color
-                                } else {
-                                    self.read(palette_addr + c as u16 - 1, rom)
-                                };
+                            let pattern_offset = x % 8;
+                            let c = (((pattern_high >> (7 - pattern_offset)) & 0x01) << 1)
+                                     | ((pattern_low >> (7 - pattern_offset)) & 0x01);
+                            let color = if c == 0 {
+                                self.palette.read(0x3F00)
+                            } else {
+                                self.palette.read(palette_addr + c as u16)
+                            };
 
-                                self.renderer.set((nt_offset_x * 8 + i) as usize,
-                                                  line as usize, color);
-                            }
+                            self.renderer.set((tick - 1) as usize, line as usize, color);
                         }
 
                         if self.ppu_mask.show_sprite() && line > 0 {
-                            if tick < 65 {
+                            if tick == 1 {
                                 self.oam_clear = true;
                             } else if tick == 65 {
                                 self.oam_clear = false;
@@ -244,7 +242,7 @@ impl PPU {
             PPUSTATUS => {
                 let status = self.ppu_status.value();
                 self.ppu_status.set_vertical_blank(false);
-                self.address.high = true;
+                self.ppu_addr.reset();
                 status
             },
             OAMDATA => {
@@ -255,13 +253,10 @@ impl PPU {
                 }
             },
             PPUDATA => {
-                let v = self.read(self.address.addr, rom);
+                let v = self.read(self.ppu_addr.addr(), rom);
                 let buffer = self.data_buffer;
                 self.data_buffer = v;
-                self.address.addr += self.ppu_ctrl.vram_step();
-                if self.address.addr > 0x3EFF {
-                    self.address.addr -= 0x1F00;
-                }
+                self.ppu_addr.go_forward_mirroring(self.ppu_ctrl.vram_step());
                 buffer
             }
             _ => 0
@@ -293,25 +288,14 @@ impl PPU {
                 self.oam_addr += 1;
             },
             PPUSCROLL => if !self.wait_cpu {
-                if self.scroll.to_x {
-                    self.scroll.x = v;
-                } else {
-                    self.scroll.y = v;
-                }
-                self.scroll.to_x = !self.scroll.to_x;
+                self.ppu_scroll.write(v);
             },
             PPUADDR => if !self.wait_cpu {
-                let high = self.address.high;
-                if high {
-                    self.address.addr = ((v as u16)  << 8) | (self.address.addr & 0x00FF);
-                } else {
-                    self.address.addr = (self.address.addr & 0xFF00) | v as u16;
-                }
-                self.address.high = !high;
+                self.ppu_addr.write(v);
             },
             PPUDATA => {
-                self.write(self.address.addr, v, rom);
-                self.address.addr += self.ppu_ctrl.vram_step();
+                self.write(self.ppu_addr.addr(), v, rom);
+                self.ppu_addr.go_forward(self.ppu_ctrl.vram_step());
             }
             _ => {}
         };
@@ -340,10 +324,6 @@ impl PPU {
         } else {
             self.palette.write(addr, v);
         }
-    }
-
-    pub fn vram_address(&self) -> u16 {
-        self.address.addr
     }
 
     pub fn stop_waiting(&mut self) {

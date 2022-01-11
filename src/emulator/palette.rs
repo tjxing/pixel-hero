@@ -1,10 +1,12 @@
+use crate::log::console_log;
+
 pub struct Palette {
     data: [u8; 32]
 }
 
 impl Palette {
     pub fn new() -> Self {
-        Palette {
+        Self {
             data: [0; 32]
         }
     }

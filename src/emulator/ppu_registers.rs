@@ -66,8 +66,8 @@ pub struct PPUMask {
 }
 
 impl PPUMask {
-    pub fn new() -> PPUMask {
-        PPUMask {
+    pub fn new() -> Self {
+        Self {
             normal_color: true,
             show_background_left: false,
             show_sprite_left: false,
@@ -112,8 +112,8 @@ pub struct PPUStatus {
 }
 
 impl PPUStatus {
-    pub fn new() -> PPUStatus {
-        PPUStatus {
+    pub fn new() -> Self {
+        Self {
             value: 0,
             vertical_blank: false
         }
@@ -155,5 +155,82 @@ impl PPUStatus {
         } else {
             self.value &= 0xBF;
         }
+    }
+}
+
+// PPU_Scroll
+pub struct PPUScroll {
+    x: u8,
+    y: u8,
+    to_x: bool
+}
+
+impl PPUScroll {
+    pub fn new() -> Self {
+        Self {
+            x: 0,
+            y: 0,
+            to_x: true
+        }
+    }
+
+    pub fn x(&self) -> u8 {
+        self.x
+    }
+
+    pub fn y(&self) -> u8 {
+        self.y
+    }
+
+    pub fn write(&mut self, v: u8) {
+        if self.to_x {
+            self.x = v;
+        } else {
+            self.y = v;
+        }
+        self.to_x = !self.to_x;
+    }
+}
+
+// PPU_Address
+pub struct PPUAddress {
+    addr: u16,
+    high: bool
+}
+
+impl PPUAddress {
+    pub fn new() -> Self {
+        Self {
+            addr: 0,
+            high: true
+        }
+    }
+
+    pub fn addr(&self) -> u16 {
+        self.addr
+    }
+
+    pub fn go_forward(&mut self, step: u16) {
+        self.addr += step;
+    }
+
+    pub fn go_forward_mirroring(&mut self, step: u16) {
+        self.addr += step;
+        if self.addr > 0x3EFF {
+            self.addr -= 0x1F00;
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.high = true;
+    }
+
+    pub fn write(&mut self, v: u8) {
+        if self.high {
+            self.addr = ((v as u16)  << 8) | (self.addr & 0x00FF);
+        } else {
+            self.addr = (self.addr & 0xFF00) | v as u16;
+        }
+        self.high = !self.high;
     }
 }

@@ -743,8 +743,8 @@ impl InstructionSet {
             action: |bus: &mut Bus| {
                 let addr = bus.zero_page_map();
                 let num = bus.read_memory(addr);
-                bus.cpu_mut().inc(num);
-                bus.write_memory(addr, num);
+                let result = bus.cpu_mut().inc(num);
+                bus.write_memory(addr, result);
                 bus.cpu_mut().go_forward(2);
                 0
             }
@@ -755,8 +755,8 @@ impl InstructionSet {
             action: |bus: &mut Bus| {
                 let addr = bus.zero_page_x_map();
                 let num = bus.read_memory(addr);
-                bus.cpu_mut().inc(num);
-                bus.write_memory(addr, num);
+                let result = bus.cpu_mut().inc(num);
+                bus.write_memory(addr, result);
                 bus.cpu_mut().go_forward(2);
                 0
             }
@@ -767,8 +767,8 @@ impl InstructionSet {
             action: |bus: &mut Bus| {
                 let addr = bus.absolute_map();
                 let num = bus.read(addr);
-                bus.cpu_mut().inc(num);
-                bus.write(addr, num);
+                let result = bus.cpu_mut().inc(num);
+                bus.write(addr, result);
                 bus.cpu_mut().go_forward(3);
                 0
             }
@@ -779,10 +779,10 @@ impl InstructionSet {
             action: |bus: &mut Bus| {
                 let addr = bus.absolute_x_map();
                 let num = bus.read(addr.0);
-                bus.cpu_mut().inc(num);
-                bus.write(addr.0, num);
+                let result = bus.cpu_mut().inc(num);
+                bus.write(addr.0, result);
                 bus.cpu_mut().go_forward(3);
-                0
+                if addr.1 {1} else {0}
             }
         };
         // INX
@@ -1003,7 +1003,7 @@ impl InstructionSet {
             action: |bus: &mut Bus| {
                 let addr = bus.zero_page_x_map();
                 let num = bus.read_memory(addr);
-                bus.cpu_mut().ldx(num);
+                bus.cpu_mut().ldy(num);
                 bus.cpu_mut().go_forward(2);
                 0
             }
@@ -1511,7 +1511,7 @@ impl InstructionSet {
                 let a = bus.cpu().a();
                 bus.write(addr.0, a);
                 bus.cpu_mut().go_forward(3);
-                0
+                if addr.1 { 1 } else { 0 }
             }
         };
         // STA a,Y
@@ -1522,7 +1522,7 @@ impl InstructionSet {
                 let a = bus.cpu().a();
                 bus.write(addr.0, a);
                 bus.cpu_mut().go_forward(3);
-                0
+                if addr.1 { 1 } else { 0 }
             }
         };
         // STA (d,X)
@@ -1602,7 +1602,7 @@ impl InstructionSet {
                 0
             }
         };
-        // STX a
+        // STY a
         instructions[0x8C] = Instruction {
             cycles: 4,
             action: |bus: &mut Bus| {
