@@ -20,9 +20,9 @@ pub struct InstructionSet {
 impl InstructionSet {
     pub fn new() -> InstructionSet {
         let mut instructions: [Instruction; 256] = [Instruction {
-            cycles: 0,
+            cycles: 110,
             action: |_: &mut Bus| {
-                panic!("Invalid instruction")
+                panic!("Invalid instruction");
             }
         }; 256];
 
@@ -362,7 +362,7 @@ impl InstructionSet {
             cycles: 7,
             action: |bus: &mut Bus| {
                 let pc = bus.cpu().pc();
-                bus.push_word(pc + 2);
+                bus.push_word(pc + 1);
                 let p = bus.cpu().p();
                 bus.push(p);
                 let new_pc = (bus.read(0xFFFE) as u16)
@@ -704,8 +704,8 @@ impl InstructionSet {
                 if addr.1 {1} else {0}
             }
         };
-        // EOR a,9
-        instructions[0x5D] = Instruction {
+        // EOR a,Y
+        instructions[0x59] = Instruction {
             cycles: 4,
             action: |bus: &mut Bus| {
                 let addr = bus.absolute_y_map();
@@ -1433,7 +1433,7 @@ impl InstructionSet {
             }
         };
         // SBC (d),Y
-        instructions[0xE1] = Instruction {
+        instructions[0xF1] = Instruction {
             cycles: 6,
             action: |bus: &mut Bus| {
                 let addr = bus.indirect_indexed_map();

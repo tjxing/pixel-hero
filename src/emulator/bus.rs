@@ -14,6 +14,7 @@ pub struct Bus {
     memory: Memory,
     registers: Registers,
     rom: Rom,
+
     nmi_flag: bool,
     dma_clk: u16
 }
@@ -156,7 +157,7 @@ impl Bus {
     }
 
     pub fn pop(&mut self) -> u8 {
-        let addr = self.cpu_mut().pop();
+        let addr = self.cpu.pop();
         self.read_memory(addr)
     }
 
