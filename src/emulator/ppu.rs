@@ -40,7 +40,7 @@ pub struct PPU {
     sprite_count: u8,
     oam_clear: bool,
     oam_addr: u8,
-    oam_index: usize,
+    oam_index: u8,
 
     wait_cpu: bool,
     even: bool,
@@ -280,6 +280,7 @@ impl PPU {
             },
             OAMADDR => {
                 self.oam_addr = v;
+                self.oam_index = v;
             },
             OAMDATA => {
                 if self.ppu_status.vertical_blank() {
@@ -330,9 +331,14 @@ impl PPU {
         self.wait_cpu = false;
     }
 
-    pub fn fill_oam(&mut self, v: u8) {
-        self.oam[self.oam_index] = v;
-        self.oam_index = (self.oam_index + 1) % 256;
+    pub fn fill_oam(&mut self, v: u8) -> u8 {
+        self.oam[self.oam_index as usize] = v;
+        self.oam_index = if self.oam_index == 255 {
+            0
+        } else {
+            self.oam_index + 1
+        };
+        self.oam_index
     }
 
 }

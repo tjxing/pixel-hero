@@ -63,7 +63,9 @@ impl Bus {
                 let base = (v as u16) << 8;
                 for i in 0x00..0xFF as u16 {
                     let v = self.read(base | i);
-                    self.ppu.fill_oam(v);
+                    if self.ppu.fill_oam(v) == 0 {
+                        break;
+                    }
                 }
                 self.dma_clk = 513;
             } else {
@@ -176,9 +178,9 @@ impl Bus {
     }
 
     pub fn nmi(&mut self) {
-        let pc = (self.read(0xFFFA) as u16) | ((self.read(0xFFFB) as u16) << 8);
         self.push_word(self.cpu.pc());
         self.push(self.cpu.p());
+        let pc = (self.read(0xFFFA) as u16) | ((self.read(0xFFFB) as u16) << 8);
         self.cpu.goto(pc);
         self.nmi_flag = false;
     }

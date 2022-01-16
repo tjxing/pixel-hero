@@ -2,6 +2,7 @@ use std::rc::Rc;
 use crate::conf::Configuration;
 use super::instruction::InstructionSet;
 use crate::emulator::bus::Bus;
+use crate::log::console_log;
 
 #[allow(non_snake_case)]
 pub struct CPU {
@@ -66,7 +67,6 @@ impl CPU {
         self.P.Z = a == 0;
         self.P.V = (num ^ self.A & 0x80) == 0 && (num ^ a & 0x80) != 0;
         self.A = a;
-
     }
 
     pub fn and(&mut self, num: u8) {
@@ -165,15 +165,15 @@ impl CPU {
 
     fn compare(&mut self, n1: u8, n2: u8) {
         if n1 == n2 {
-            self.P.C = 0;
+            self.P.C = 1;
             self.P.N = false;
             self.P.Z = true;
         } else if n1 > n2 {
-            self.P.C = 0;
-            self.P.N = (n1 - n2) & 0x80 != 0;
+            self.P.C = 1;
+            self.P.N = (n1 - n2) >= 128;
             self.P.Z = false;
         } else if n1 < n2 {
-            self.P.C = 1;
+            self.P.C = 0;
             self.P.N = (n2 - n1) <= 128;
             self.P.Z = false;
         }
@@ -290,7 +290,7 @@ impl CPU {
         let result = (self.A as i16 - num as i16 - (1 - self.P.C) as i16) as u16;
         self.P.N = (result & 0x0080) != 0;
         self.P.Z = result == 0;
-        self.P.C = ((result & 0x0100) >> 8) as u8;
+        self.P.C = if result & 0x8000 > 0 { 0 } else { 1 };
         let a = (result & 0xFF) as u8;
         self.P.V = ((num & 0x80) == (self.A & 0x80)) && ((num & 0x80) != (a & 0x80));
         self.A = a;

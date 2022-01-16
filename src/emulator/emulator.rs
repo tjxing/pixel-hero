@@ -40,11 +40,6 @@ impl Emulator {
 
         wait_ppu(&mut bus, &inst);
 
-        // for i in 0..60 as u16 {
-        //     let x = bus.read(47271 + i);
-        //     console_log(std::format!("0x{:X}", x).as_str());
-        // }
-
         let frame = make_frame(bus, inst);
         self.frame = Some(frame);
         let timer = window().unwrap()
@@ -109,8 +104,12 @@ fn make_frame(mut bus: Bus, instructions: InstructionSet) -> Closure<dyn FnMut()
                 bus.ppu_ticks(3 * dma_clk)
             } else {
                 bus.check_interrupt();
+                let pc = bus.cpu().pc();
                 let inst = current_instruction(&mut bus, &instructions);
                 let cpu_cycles = inst.apply(&mut bus);
+                if pc == 49946 {
+                    console_log(std::format!("{}", bus.cpu().pc()).as_str());
+                }
                 bus.ppu_ticks(3 * cpu_cycles)
             };
             if finish {
