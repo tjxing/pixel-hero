@@ -12,7 +12,9 @@ const COLORS: [u8; 192] = [84,84,84,0,30,116,8,16,144,48,0,136,68,0,100,92,0,48,
 
 pub struct Renderer {
     ctx: CanvasRenderingContext2d,
-    data: [u8; DATA_LEN]
+    data: [u8; DATA_LEN],
+    bg_buffer: [u8; RAW_WIDTH], // The color indexes. And 0xFF is transparent point
+    sprite_buffer: [(u8, bool); RAW_WIDTH] // (color index, is in front of background)
 }
 
 impl Renderer {
@@ -27,18 +29,54 @@ impl Renderer {
         Renderer {
             ctx,
             data,
+            bg_buffer: [0xFF; RAW_WIDTH],
+            sprite_buffer: [(0xFF, false); RAW_WIDTH]
         }
     }
 
-    pub fn set(&mut self, x: usize, y: usize, color: u8) {
-        if x < RAW_WIDTH && y < RAW_HEIGHT {
-            let index = CHANNELS * RAW_WIDTH * y + CHANNELS * x;
+    pub fn clear_buffer(&mut self) {
+        self.bg_buffer.fill(0xFF);
+        self.sprite_buffer.fill((0xFF, false));
+    }
+
+    pub fn set_background(&mut self, index: u8, value: u8) {
+        self.bg_buffer[index as usize] = value;
+    }
+
+    pub fn set_sprite(&mut self, index: u8, value: u8, front: bool) {
+        self.sprite_buffer[index as usize] = (value, front);
+    }
+
+    pub fn is_bg_transparent(&mut self, index: u8) -> bool {
+        self.bg_buffer[index as usize] == 0xFF
+    }
+
+    pub fn merge_line(&mut self, line: u8, bg_color: u8) {
+        for i in 0..RAW_WIDTH {
+            let bg = self.bg_buffer[i];
+            let sprite = self.sprite_buffer[i];
+            let color = if bg == 0xFF {
+                if sprite.0 == 0xFF {
+                    bg_color
+                } else {
+                    sprite.0
+                }
+            } else {
+                if sprite.0 < 0xFF && sprite.1 {
+                    sprite.0
+                } else {
+                    bg
+                }
+            };
+
+            let index = CHANNELS * RAW_WIDTH * line as usize + CHANNELS * i;
             let c = color as usize * 3;
             self.data[index] = COLORS[c];
             self.data[index + 1] = COLORS[c + 1];
             self.data[index + 2] = COLORS[c + 2];
             self.data[index + 3] = 255;
         }
+
     }
 
     pub fn render(&self) {

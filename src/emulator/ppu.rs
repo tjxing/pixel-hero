@@ -38,6 +38,7 @@ pub struct PPU {
     oam: [u8; 256],
     secondary_oam: [u8; 32],
     sprite_count: u8,
+    sprite_0: bool,
     oam_clear: bool,
     oam_addr: u8,
     oam_index: u8,
@@ -65,6 +66,7 @@ impl PPU {
             oam: [0; 256],
             secondary_oam: [0; 32],
             sprite_count: 0,
+            sprite_0: false,
             oam_clear: false,
             oam_addr: 0,
             oam_index: 0,
@@ -95,11 +97,14 @@ impl PPU {
                     if self.clk_counter == 1 {
                         self.ppu_status.set_vertical_blank(false);
                         self.ppu_status.set_sprite_overflow(false);
+                        self.ppu_status.set_sprite_0_hit(false);
                     }
                 },
                 PHRASE_VISIBLE_RENDER => {
                     let tick = (self.clk_counter % SCANLINE_CLK) as u16;
-                    if tick > 0 {
+                    if tick == 0 {
+                        self.renderer.clear_buffer();
+                    } else {
                         let line = (self.clk_counter / SCANLINE_CLK) as u16;
 
                         if self.ppu_mask.show_background() && tick < 257 {
@@ -136,13 +141,10 @@ impl PPU {
                             let pattern_offset = x % 8;
                             let c = (((pattern_high >> (7 - pattern_offset)) & 0x01) << 1)
                                      | ((pattern_low >> (7 - pattern_offset)) & 0x01);
-                            let color = if c == 0 {
-                                self.palette.read(0x3F00)
-                            } else {
-                                self.palette.read(palette_addr + c as u16)
-                            };
-
-                            self.renderer.set((tick - 1) as usize, line as usize, color);
+                            if c > 0 {
+                                let color = self.palette.read(palette_addr + c as u16);
+                                self.renderer.set_background((tick - 1) as u8, color);
+                            }
                         }
 
                         if self.ppu_mask.show_sprite() && line > 0 {
@@ -151,7 +153,7 @@ impl PPU {
                             } else if tick == 65 {
                                 self.oam_clear = false;
                                 self.detect_sprite(line as u8);
-                            } else if tick > 256 && self.sprite_count > 0 {
+                            } else if tick > 256 && self.sprite_count > 0 && (tick - 1) % 8 == 0 {
                                 self.sprite_count -= 1;
 
                                 let y = self.secondary_oam[4 * self.sprite_count as usize] + 1;
@@ -159,23 +161,45 @@ impl PPU {
                                 let sprite_attr = self.secondary_oam[4 * self.sprite_count as usize + 2];
                                 let x = self.secondary_oam[4 * self.sprite_count as usize + 3];
 
-                                let pattern_addr = self.ppu_ctrl.sprite_pattern()
-                                    + pattern_index as u16 * 16 + line - y as u16;
+                                let pattern_addr_base = self.ppu_ctrl.sprite_pattern()
+                                    + pattern_index as u16 * 16;
+                                let pattern_addr = if sprite_attr & 0x80 == 0 {
+                                    pattern_addr_base + line - y as u16
+                                } else {
+                                    pattern_addr_base + y as u16 - line + 7
+                                };
                                 let pattern_low = self.read(pattern_addr, rom);
                                 let pattern_high = self.read(pattern_addr + 8, rom);
-                                let palette_addr = 0x3F11 + 4 * (sprite_attr & 0x03) as u16;
+                                let palette_addr = 0x3F10 + 4 * (sprite_attr & 0x03) as u16;
                                 for i in 0..8 {
-                                    let c = (((pattern_high >> (7 - i)) & 0x01) << 1)
-                                        | ((pattern_low >> (7 - i)) & 0x01);
-                                    let color: u8 = if c == 0 {
-                                        0x0F
+                                    let c = if sprite_attr & 0x40 == 0 {
+                                        (((pattern_high >> (7 - i)) & 0x01) << 1)
+                                            | ((pattern_low >> (7 - i)) & 0x01)
                                     } else {
-                                        self.read(palette_addr + c as u16 - 1, rom)
+                                        (((pattern_high >> i) & 0x01) << 1)
+                                            | ((pattern_low >> i) & 0x01)
                                     };
-
-                                    self.renderer.set((x + i) as usize, line as usize, color);
+                                    if c > 0 {
+                                        let color = self.palette.read(palette_addr + c as u16);
+                                        let x_index = x as u16 + i as u16;
+                                        if x_index < RAW_WIDTH as u16 {
+                                            let front = sprite_attr & 0x20 == 0;
+                                            self.renderer.set_sprite(x_index as u8, color, front);
+                                            if !self.ppu_status.sprite_0_hit()
+                                                && self.sprite_0 && self.sprite_count == 0
+                                                && front
+                                                && !self.renderer.is_bg_transparent(x_index as u8) {
+                                                self.ppu_status.set_sprite_0_hit(true);
+                                            }
+                                        }
+                                    }
                                 }
                             }
+                        }
+
+                        if tick == SCANLINE_CLK as u16 - 1
+                            && (self.ppu_mask.show_sprite() || self.ppu_mask.show_background()) {
+                            self.renderer.merge_line(line as u8, self.palette.read(0x3F00));
                         }
                     }
                 },
@@ -219,18 +243,32 @@ impl PPU {
 
     fn detect_sprite(&mut self, line: u8) {
         self.sprite_count = 0;
-        for i in 0..64 as usize {
-            let y = self.oam[4 * i] + 1;
+        self.sprite_0 = false;
+        let mut i = self.oam_addr;
+        loop {
+            let dist = 255 - i;
+            if dist < 3 {
+                break;
+            }
+            let y = self.oam[i as usize] + 1;
             if line >= y && (line - y) < 8 {
                 if self.sprite_count >= 8 {
                     self.ppu_status.set_sprite_overflow(true);
                     break;
                 } else {
                     for j in 0..4 as usize {
-                        self.secondary_oam[4 * self.sprite_count as usize + j] = self.oam[4 * i + j];
+                        self.secondary_oam[4 * self.sprite_count as usize + j] = self.oam[i as usize + j];
+                    }
+                    if i == self.oam_addr {
+                        self.sprite_0 = true;
                     }
                     self.sprite_count += 1;
                 }
+            }
+            if dist == 3 {
+                break;
+            } else {
+                i += 4;
             }
         }
     }
@@ -305,7 +343,7 @@ impl PPU {
 
     fn read(&self, addr: u16, rom: &Rom) -> u8 {
         let mark = addr & 0xF000;
-        if mark == 0x1000 {
+        if mark == 0 || mark == 0x1000 {
             rom.mapper().read_chr(addr)
         } else if addr < 0x3EFF {
             let address = addr & 0x0FFF;
@@ -317,7 +355,7 @@ impl PPU {
 
     fn write(&mut self, addr: u16, v: u8, rom: &mut Rom) {
         let mark = addr & 0xF000;
-        if mark == 0x1000 {
+        if mark == 0 || mark == 0x1000 {
             rom.mapper_mut().write_chr(addr, v);
         } else if addr < 0x3EFF {
             let address = addr & 0x0FFF;

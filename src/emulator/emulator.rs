@@ -45,8 +45,7 @@ impl Emulator {
         let timer = window().unwrap()
             .set_interval_with_callback_and_timeout_and_arguments_0(
                 self.frame.as_ref().unwrap().as_ref().unchecked_ref::<Function>(),
-                10
-                //(1000f64 / fps).floor() as i32
+                (1000f64 / fps).floor() as i32
             ).unwrap();
         self.timer = Some(timer);
     }
@@ -104,12 +103,8 @@ fn make_frame(mut bus: Bus, instructions: InstructionSet) -> Closure<dyn FnMut()
                 bus.ppu_ticks(3 * dma_clk)
             } else {
                 bus.check_interrupt();
-                let pc = bus.cpu().pc();
                 let inst = current_instruction(&mut bus, &instructions);
                 let cpu_cycles = inst.apply(&mut bus);
-                if pc == 49946 {
-                    console_log(std::format!("{}", bus.cpu().pc()).as_str());
-                }
                 bus.ppu_ticks(3 * cpu_cycles)
             };
             if finish {

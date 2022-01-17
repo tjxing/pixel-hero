@@ -1,3 +1,5 @@
+use crate::log::console_log;
+
 // PPU_CTRL
 pub struct PPUControl {
     nt_base: u16,
@@ -108,14 +110,16 @@ impl PPUMask {
 // PPU_Status
 pub struct PPUStatus {
     value: u8,
-    vertical_blank: bool
+    vertical_blank: bool,
+    sprite_0_hit: bool
 }
 
 impl PPUStatus {
     pub fn new() -> Self {
         Self {
             value: 0,
-            vertical_blank: false
+            vertical_blank: false,
+            sprite_0_hit: false
         }
     }
 
@@ -150,11 +154,16 @@ impl PPUStatus {
     }
 
     pub fn set_sprite_0_hit(&mut self, value: bool) {
+        self.sprite_0_hit = value;
         if value {
             self.value |= 0x40;
         } else {
             self.value &= 0xBF;
         }
+    }
+
+    pub fn sprite_0_hit(&self) -> bool {
+        self.sprite_0_hit
     }
 }
 
