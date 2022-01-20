@@ -26,7 +26,6 @@ pub enum Timing {
 }
 
 pub struct Rom {
-    data: Rc<[u8]>,
     prg_rom_size: u32,
     chr_rom_size: u32,
     mirroring: Option<u8>,
@@ -178,7 +177,6 @@ impl Rom {
         let mapper = find_mapper(mapper_id, sub_mapper, prg_rom, chr_rom).unwrap();
 
         Ok(Rom {
-            data: Rc::clone(&data),
             prg_rom_size,
             chr_rom_size,
             mirroring,
@@ -214,5 +212,33 @@ impl Rom {
 
     pub fn mirroring(&self) -> Option<u8> {
         self.mirroring
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+
+    pub fn mock() -> Rom {
+        Rom {
+            prg_rom_size: 0,
+            chr_rom_size: 0,
+            mirroring: Some(0),
+            extra_memory: false,
+            console: Console::Nes,
+            version: Version::V1,
+            prg_ram_size: 0,
+            prg_nv_ram_size: 0,
+            timing: Timing::NTSC,
+            chr_ram_size: 0,
+            chr_nv_ram_size: 0,
+            vs_ppu_type: 0,
+            vs_hardware: 0,
+            ext_console_type: 0,
+            misc_roms: 0,
+            exp_device: 0,
+            trainer: None,
+            mapper: crate::rom::mapper::tests::mock()
+        }
     }
 }

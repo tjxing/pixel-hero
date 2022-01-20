@@ -20,7 +20,7 @@ pub struct Bus {
 }
 
 impl Bus {
-    pub fn new(rom: Rom, ctx: CanvasRenderingContext2d, conf: &Configuration) -> Bus {
+    pub fn new(rom: Rom, ctx: Option<CanvasRenderingContext2d>, conf: &Configuration) -> Bus {
         let mut bus = Bus {
             cpu: CPU::new(),
             ppu: PPU::new(ctx, &rom),
@@ -115,7 +115,7 @@ impl Bus {
         let temp = low as u16 + self.cpu.x() as u16;
         let high = self.read(self.cpu.pc() + 2);
         let addr = temp + ((high as u16) << 8);
-        (addr, temp | 0x0100 != 0)
+        (addr, temp & 0x0100 != 0)
     }
 
     pub fn absolute_y_map(&mut self) -> (u16, bool) {
@@ -123,7 +123,7 @@ impl Bus {
         let temp = low as u16 + self.cpu.y() as u16;
         let high = self.read(self.cpu.pc() + 2);
         let addr = temp + ((high as u16) << 8);
-        (addr, temp | 0x0100 != 0)
+        (addr, temp & 0x0100 != 0)
     }
 
     pub fn indexed_indirect_map(&mut self) -> u16 {
@@ -139,7 +139,7 @@ impl Bus {
         let high = self.memory.read_zero_page(((arg as u16 + 1) & 0x00FF) as u8);
         let temp = low as u16 + self.cpu.y() as u16;
         let addr = temp + ((high as u16) << 8);
-        (addr, temp | 0x0100 != 0)
+        (addr, temp & 0x0100 != 0)
     }
 
     pub fn relative_map(&mut self) -> i8 {
@@ -216,5 +216,16 @@ impl Bus {
 
     pub fn ppu_mut(&mut self) -> &mut PPU {
         &mut self.ppu
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    pub fn mock() -> Bus {
+        let conf = crate::conf::tests::mock();
+        let rom = crate::rom::tests::mock();
+        Bus::new(rom, None, &conf)
     }
 }

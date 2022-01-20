@@ -39,10 +39,6 @@ impl CPU {
         self.A
     }
 
-    pub fn set_a(&mut self, a: u8) {
-        self.A = a;
-    }
-
     pub fn x(&self) -> u8 {
         self.X
     }
@@ -65,7 +61,7 @@ impl CPU {
         self.P.N = (result & 0x80) != 0;
         let a = (result & 0xFF) as u8;
         self.P.Z = a == 0;
-        self.P.V = (num ^ self.A & 0x80) == 0 && (num ^ a & 0x80) != 0;
+        self.P.V = ((num ^ self.A) & 0x80) == 0 && ((num ^ a) & 0x80) != 0;
         self.A = a;
     }
 
@@ -118,10 +114,9 @@ impl CPU {
     }
 
     pub fn test(&mut self, num: u8) {
-        let result = self.A ^ num;
-        self.P.N = (result & 0x80) != 0;
-        self.P.V = (result & 0x01) != 0;
-        self.P.Z = result == 0;
+        self.P.N = (num & 0x80) != 0;
+        self.P.V = (num & 0x40) != 0;
+        self.P.Z = (self.A & num) == 0;
     }
 
     pub fn push(&mut self) -> u8 {
@@ -283,16 +278,6 @@ impl CPU {
 
     pub fn ror_a(&mut self) {
         let a = self.ror(self.A);
-        self.A = a;
-    }
-
-    pub fn sbc(&mut self, num: u8) {
-        let result = (self.A as i16 - num as i16 - (1 - self.P.C) as i16) as u16;
-        self.P.N = (result & 0x0080) != 0;
-        self.P.Z = result == 0;
-        self.P.C = if result & 0x8000 > 0 { 0 } else { 1 };
-        let a = (result & 0xFF) as u8;
-        self.P.V = ((num & 0x80) == (self.A & 0x80)) && ((num & 0x80) != (a & 0x80));
         self.A = a;
     }
 

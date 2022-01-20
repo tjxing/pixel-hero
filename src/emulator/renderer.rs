@@ -11,20 +11,22 @@ const COLORS: [u8; 192] = [84,84,84,0,30,116,8,16,144,48,0,136,68,0,100,92,0,48,
     236,238,236,168,204,236,188,188,236,212,178,236,236,174,236,236,174,212,236,180,176,228,196,144,204,210,120,180,222,120,168,226,144,152,226,180,160,214,228,160,162,160,0,0,0,0,0,0];
 
 pub struct Renderer {
-    ctx: CanvasRenderingContext2d,
+    ctx: Option<CanvasRenderingContext2d>,
     data: [u8; DATA_LEN],
     bg_buffer: [u8; RAW_WIDTH], // The color indexes. And 0xFF is transparent point
     sprite_buffer: [(u8, bool); RAW_WIDTH] // (color index, is in front of background)
 }
 
 impl Renderer {
-    pub fn new(ctx: CanvasRenderingContext2d) -> Renderer {
+    pub fn new(ctx: Option<CanvasRenderingContext2d>) -> Renderer {
         let mut data: [u8; DATA_LEN] = [0; DATA_LEN];
-        let image_data = ctx.get_image_data(0.0, 0.0, RAW_WIDTH as f64, RAW_HEIGHT as f64)
-            .unwrap()
-            .data();
-        for i in 0..image_data.len() as usize {
-            data[i] = *image_data.get(i).unwrap();
+        if ctx.is_some() {
+            let image_data = ctx.as_ref().unwrap().get_image_data(0.0, 0.0, RAW_WIDTH as f64, RAW_HEIGHT as f64)
+                .unwrap()
+                .data();
+            for i in 0..image_data.len() as usize {
+                data[i] = *image_data.get(i).unwrap();
+            }
         }
         Renderer {
             ctx,
@@ -80,10 +82,15 @@ impl Renderer {
     }
 
     pub fn render(&self) {
-        let data = Clamped::<&[u8]>(&self.data);
-        let image = ImageData::new_with_u8_clamped_array_and_sh(data,
-            RAW_WIDTH as u32,
-            RAW_HEIGHT as u32).unwrap();
-        self.ctx.put_image_data(&image, 0.0, 0.0).unwrap();
+        match self.ctx.as_ref() {
+            Some(c) => {
+                let data = Clamped::<&[u8]>(&self.data);
+                let image = ImageData::new_with_u8_clamped_array_and_sh(data,
+                                                                        RAW_WIDTH as u32,
+                                                                        RAW_HEIGHT as u32).unwrap();
+                c.put_image_data(&image, 0.0, 0.0).unwrap();
+            },
+            None => {}
+        }
     }
 }

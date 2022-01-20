@@ -19,8 +19,8 @@ pub struct I18n {
 }
 
 impl I18n {
-    pub fn new(locale: String) -> I18n {
-        I18n {
+    pub fn new(locale: String) -> Self {
+        Self {
             locale
         }
     }

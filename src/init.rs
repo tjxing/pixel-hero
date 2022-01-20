@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::{JsValue, wasm_bindgen, Closure};
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlElement, HtmlCanvasElement, HtmlDivElement, Document, CanvasRenderingContext2d};
-use js_sys::Function;
+use js_sys::{Function, Object};
 use crate::conf::Configuration;
 use crate::i18n::Message;
 use crate::emulator::{Emulator, new_emulator};

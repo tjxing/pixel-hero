@@ -60,7 +60,7 @@ pub struct PPU {
 }
 
 impl PPU {
-    pub fn new(ctx: CanvasRenderingContext2d, rom: &Rom) -> PPU {
+    pub fn new(ctx: Option<CanvasRenderingContext2d>, rom: &Rom) -> PPU {
         PPU {
             renderer: Renderer::new(ctx),
             oam: [0; 256],

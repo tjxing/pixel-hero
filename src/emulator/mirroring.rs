@@ -17,16 +17,21 @@ impl Mirroring {
 }
 
 pub fn select_mirroring(rom: &Rom) -> Mirroring {
-    if rom.mirroring().unwrap() == 0 {
-        Mirroring {
-            read: horizontal_mirroring_read,
-            write: horizontal_mirroring_write
-        }
-    } else {
-        Mirroring {
-            read: vertical_mirroring_read,
-            write: vertical_mirroring_write
-        }
+    match rom.mirroring() {
+        Some(m) => {
+            if m == 0 {
+                Mirroring {
+                    read: horizontal_mirroring_read,
+                    write: horizontal_mirroring_write
+                }
+            } else {
+                Mirroring {
+                    read: vertical_mirroring_read,
+                    write: vertical_mirroring_write
+                }
+            }
+        },
+        None => panic!("Mirroring not supported.")
     }
 }
 

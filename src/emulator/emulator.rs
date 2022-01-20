@@ -35,7 +35,7 @@ impl Emulator {
             self.conf.i18n().to_string(e)
         }).unwrap();
         let fps = make_fps(&self.conf, &rom);
-        let mut bus = Bus::new(rom, self.screen.clone(), &self.conf);
+        let mut bus = Bus::new(rom, Some(self.screen.clone()), &self.conf);
         let inst = InstructionSet::new();
 
         wait_ppu(&mut bus, &inst);

@@ -10,7 +10,7 @@ pub struct Configuration {
 }
 
 impl Configuration {
-    pub fn new(conf: &JsValue) -> Configuration {
+    pub fn new(conf: &JsValue) -> Self {
         let lang = get_conf_string(conf, "locale").or_else(|| {
             match web_sys::window() {
                 None => None,
@@ -22,7 +22,7 @@ impl Configuration {
             Some(l) => I18n::new (l)
         };
 
-        Configuration {
+        Self {
             i18n,
             fps: get_conf_integer(conf, "fps")
         }
@@ -48,5 +48,17 @@ fn get_conf_integer(conf: &JsValue, key: &str) -> Option<f64> {
     match Reflect::get(conf, &JsValue::from_str(key)) {
         Ok(v) => v.as_f64(),
         Err(_) => None
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    pub fn mock() -> Configuration {
+        Configuration {
+            i18n: I18n::new(DEFAULT_LOCALE.to_string()),
+            fps: None
+        }
     }
 }

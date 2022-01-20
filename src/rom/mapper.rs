@@ -15,3 +15,32 @@ pub fn find_mapper(mapper: u16, sub_mapper: Option<u8>,
         None
     }
 }
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+
+    struct MockMapper;
+
+    impl Mapper for MockMapper {
+        fn read_prg(&self, _addr: u16) -> u8 {
+            1
+        }
+
+        fn write_prg(&mut self, _addr: u16, _value: u8) {
+
+        }
+
+        fn read_chr(&self, _addr: u16) -> u8 {
+            2
+        }
+
+        fn write_chr(&mut self, _addr: u16, _value: u8) {
+
+        }
+    }
+
+    pub fn mock() -> Box<dyn Mapper> {
+        Box::new(MockMapper)
+    }
+}
