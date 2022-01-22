@@ -154,7 +154,7 @@ impl Bus {
 
     pub fn push(&mut self, num: u8) {
         let addr = self.cpu.push();
-        self.write_memory(addr, num);
+        self.memory.write_stack(addr, num);
     }
 
     pub fn push_word(&mut self, num: u16) {
@@ -164,7 +164,7 @@ impl Bus {
 
     pub fn pop(&mut self) -> u8 {
         let addr = self.cpu.pop();
-        self.read_memory(addr)
+        self.memory.read_stack(addr)
     }
 
     pub fn pop_word(&mut self) -> u16 {
