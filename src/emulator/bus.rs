@@ -16,6 +16,8 @@ pub struct Bus {
     rom: Rom,
 
     nmi_flag: bool,
+    brk_flag: bool,
+    irq_flag: bool,
     dma_clk: u16
 }
 
@@ -28,6 +30,8 @@ impl Bus {
             registers: Registers::new(),
             rom,
             nmi_flag: false,
+            brk_flag: false,
+            irq_flag: false,
             dma_clk: 0
         };
         let pc = bus.read(0xFFFC) as u16 | (bus.read(0xFFFD) as u16) << 8;
@@ -177,17 +181,31 @@ impl Bus {
         result.0
     }
 
-    pub fn nmi(&mut self) {
+    pub fn trigger_brk(&mut self) {
+        self.brk_flag = true;
+    }
+
+    fn interrupt(&mut self, vector: u16, b: bool) {
         self.push_word(self.cpu.pc());
-        self.push(self.cpu.p());
-        let pc = (self.read(0xFFFA) as u16) | ((self.read(0xFFFB) as u16) << 8);
+        let p = self.cpu.p();
+        self.push(if b { p | 0x10 } else { p & 0xEF });
+        self.cpu.sei();
+        let pc = (self.read(vector) as u16) | ((self.read(vector + 1) as u16) << 8);
         self.cpu.goto(pc);
-        self.nmi_flag = false;
     }
 
     pub fn check_interrupt(&mut self) {
         if self.nmi_flag {
-            self.nmi();
+            self.interrupt(0xFFFA, false);
+            self.nmi_flag = false;
+        } else if !self.cpu.mask_interrupt() {
+            if self.irq_flag {
+                self.interrupt(0xFFFC, false);
+                self.irq_flag = false;
+            } else if self.brk_flag {
+                self.interrupt(0xFFFE, true);
+                self.brk_flag = false;
+            }
         }
     }
 

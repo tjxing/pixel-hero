@@ -350,13 +350,8 @@ impl InstructionSet {
         instructions[0x00] = Instruction::new(
             7,
             |bus: &mut Bus| {
-                let pc = bus.cpu().pc();
-                bus.push_word(pc + 1);
-                let p = bus.cpu().p();
-                bus.push(p);
-                let new_pc = (bus.read(0xFFFE) as u16)
-                    | ((bus.read(0xFFFF) as u16) << 8);
-                bus.cpu_mut().goto(new_pc);
+                bus.trigger_brk();
+                bus.cpu_mut().go_forward(2);
                 0
             }
         );
@@ -1186,7 +1181,7 @@ impl InstructionSet {
             3,
             |bus: &mut Bus| {
                 let p = bus.cpu().p();
-                bus.push(p);
+                bus.push(p | 0x10);
                 bus.cpu_mut().go_forward(1);
                 0
             }

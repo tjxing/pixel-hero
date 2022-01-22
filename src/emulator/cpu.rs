@@ -328,6 +328,10 @@ impl CPU {
         self.P.N = (self.S & 0x80) != 0;
         self.P.Z = self.S == 0;
     }
+
+    pub fn mask_interrupt(&self) -> bool {
+        self.P.I
+    }
 }
 
 #[allow(non_snake_case)]
@@ -371,7 +375,7 @@ impl Flags {
     }
 
     pub fn get(&self) -> u8 {
-        let mut result: u8 = self.C;
+        let mut result: u8 = self.C | 0x20;
         if self.Z {
             result |= 0x02;
         }
