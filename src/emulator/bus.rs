@@ -44,8 +44,7 @@ impl Bus {
         if mark == 0 || mark == 0x1000 {
             self.memory.read(addr)
         } else if mark == 0x2000 || mark == 0x3000 {
-            let index = (addr & 0x07) as u8;
-            self.ppu.read_register(index, &self.rom)
+            self.ppu.read_register(addr, &self.rom)
         } else if addr < 0x401F {
             self.registers.read(addr)
         } else {
@@ -58,8 +57,7 @@ impl Bus {
         if mark == 0 || mark == 0x1000 {
             self.memory.write(addr, v);
         } else if mark == 0x2000 || mark == 0x3000 {
-            let index = (addr & 0x07) as u8;
-            if self.ppu.write_register(index, v, &mut self.rom) {
+            if self.ppu.write_register(addr, v, &mut self.rom) {
                 self.nmi_flag = true;
             }
         } else if addr < 0x401F {

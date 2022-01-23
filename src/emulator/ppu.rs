@@ -74,7 +74,7 @@ impl PPU {
             ppu_status: PPUStatus::new(),
             ppu_scroll: PPUScroll::new(),
             ppu_addr: PPUAddress::new(),
-            registers: PPU::make_register_read_write(),
+            registers: make_register_read_write(),
             phrase: PHRASE_PRE_RENDER,
             phrase_clk: SCANLINE_CLK,
             clk_counter: 0,
@@ -268,126 +268,13 @@ impl PPU {
         }
     }
 
-    fn make_register_read_write() -> [Register; 8] {
-        [
-            // PPU_CTRL
-            (
-                |_, _| -> u8 {
-                    panic!("$2000 is not readable.");
-                },
-                |ppu, value, _| -> bool {
-                    if !ppu.wait_cpu {
-                        let prev_nmi = ppu.ppu_ctrl.nmi();
-                        ppu.ppu_ctrl.set(value);
-                        if ppu.ppu_status.vertical_blank() && !prev_nmi && ppu.ppu_ctrl.nmi() {
-                            true
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                }
-            ),
-            // PPU_MASK
-            (
-                |_, _| -> u8 {
-                    panic!("$2001 is not readable.");
-                },
-                |ppu, value, _| -> bool {
-                    if !ppu.wait_cpu {
-                        ppu.ppu_mask.set(value);
-                    }
-                    false
-                }
-            ),
-            // PPU_STATUS
-            (
-                |ppu, _| -> u8 {
-                    let status = ppu.ppu_status.value();
-                    ppu.ppu_status.set_vertical_blank(false);
-                    ppu.ppu_addr.reset();
-                    status
-                },
-                |_, _, _| {
-                    panic!("$2002 is not writable.");
-                }
-            ),
-            // OAM_ADDR
-            (
-                |_, _| -> u8 {
-                    panic!("$2003 is not readable.");
-                },
-                |ppu, value, _| -> bool {
-                    ppu.oam_addr = value;
-                    ppu.oam_index = value;
-                    false
-                }
-            ),
-            // OAM_DATA
-            (
-                |ppu, _| -> u8 {
-                    if ppu.oam_clear {
-                        0xFF
-                    } else {
-                        ppu.oam[ppu.oam_addr as usize]
-                    }
-                },
-                |ppu, value, _| -> bool {
-                    if ppu.ppu_status.vertical_blank() {
-                        ppu.oam[ppu.oam_addr as usize] = value;
-                    }
-                    ppu.oam_addr += 1;
-                    false
-                }
-            ),
-            // PPU_SCROLL
-            (
-                |_, _| -> u8 {
-                    panic!("$2005 is not readable.");
-                },
-                |ppu, value, _| -> bool {
-                    if !ppu.wait_cpu {
-                        ppu.ppu_scroll.write(value);
-                    }
-                    false
-                }
-            ),
-            // PPU_ADDR
-            (
-                |_, _| -> u8 {
-                    panic!("$2006 is not readable.");
-                },
-                |ppu, value, _| -> bool {
-                    if !ppu.wait_cpu {
-                        ppu.ppu_addr.write(value);
-                    }
-                    false
-                }
-            ),
-            // PPU_DATA
-            (
-                |ppu, rom| -> u8 {
-                    let v = ppu.read(ppu.ppu_addr.addr(), rom);
-                    let buffer = ppu.data_buffer;
-                    ppu.data_buffer = v;
-                    ppu.ppu_addr.go_forward_mirroring(ppu.ppu_ctrl.vram_step());
-                    buffer
-                },
-                |ppu, value, rom| {
-                    ppu.write(ppu.ppu_addr.addr(), value, rom);
-                    ppu.ppu_addr.go_forward(ppu.ppu_ctrl.vram_step());
-                    false
-                }
-            )
-        ]
-    }
-
-    pub fn read_register(&mut self, index: u8, rom: &Rom) -> u8 {
+    pub fn read_register(&mut self, addr: u16, rom: &Rom) -> u8 {
+        let index = addr & 0x07;
         (self.registers[index as usize].0)(self, rom)
     }
 
-    pub fn write_register(&mut self, index: u8, v: u8, rom: &mut Rom) -> bool {
+    pub fn write_register(&mut self, addr: u16, v: u8, rom: &mut Rom) -> bool {
+        let index = addr & 0x07;
         (self.registers[index as usize].1)(self, v, rom)
     }
 
@@ -429,4 +316,228 @@ impl PPU {
         self.oam_index
     }
 
+}
+
+fn make_register_read_write() -> [Register; 8] {
+    [
+        // PPU_CTRL
+        (
+            |_, _| -> u8 {
+                panic!("$2000 is not readable.");
+            },
+            |ppu, value, _| -> bool {
+                if !ppu.wait_cpu {
+                    let prev_nmi = ppu.ppu_ctrl.nmi();
+                    ppu.ppu_ctrl.set(value);
+                    if ppu.ppu_status.vertical_blank() && !prev_nmi && ppu.ppu_ctrl.nmi() {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+        ),
+        // PPU_MASK
+        (
+            |_, _| -> u8 {
+                panic!("$2001 is not readable.");
+            },
+            |ppu, value, _| -> bool {
+                if !ppu.wait_cpu {
+                    ppu.ppu_mask.set(value);
+                }
+                false
+            }
+        ),
+        // PPU_STATUS
+        (
+            |ppu, _| -> u8 {
+                let status = ppu.ppu_status.value();
+                ppu.ppu_status.set_vertical_blank(false);
+                ppu.ppu_addr.reset();
+                status
+            },
+            |_, _, _| {
+                panic!("$2002 is not writable.");
+            }
+        ),
+        // OAM_ADDR
+        (
+            |_, _| -> u8 {
+                panic!("$2003 is not readable.");
+            },
+            |ppu, value, _| -> bool {
+                ppu.oam_addr = value;
+                ppu.oam_index = value;
+                false
+            }
+        ),
+        // OAM_DATA
+        (
+            |ppu, _| -> u8 {
+                if ppu.oam_clear {
+                    0xFF
+                } else {
+                    ppu.oam[ppu.oam_addr as usize]
+                }
+            },
+            |ppu, value, _| -> bool {
+                if ppu.ppu_status.vertical_blank() {
+                    ppu.oam[ppu.oam_addr as usize] = value;
+                }
+                ppu.oam_addr += 1;
+                false
+            }
+        ),
+        // PPU_SCROLL
+        (
+            |_, _| -> u8 {
+                panic!("$2005 is not readable.");
+            },
+            |ppu, value, _| -> bool {
+                if !ppu.wait_cpu {
+                    ppu.ppu_scroll.write(value);
+                }
+                false
+            }
+        ),
+        // PPU_ADDR
+        (
+            |_, _| -> u8 {
+                panic!("$2006 is not readable.");
+            },
+            |ppu, value, _| -> bool {
+                if !ppu.wait_cpu {
+                    ppu.ppu_addr.write(value);
+                }
+                false
+            }
+        ),
+        // PPU_DATA
+        (
+            |ppu, rom| -> u8 {
+                let v = ppu.read(ppu.ppu_addr.addr(), rom);
+                let buffer = ppu.data_buffer;
+                ppu.data_buffer = v;
+                ppu.ppu_addr.go_forward_mirroring(ppu.ppu_ctrl.vram_step());
+                buffer
+            },
+            |ppu, value, rom| {
+                ppu.write(ppu.ppu_addr.addr(), value, rom);
+                ppu.ppu_addr.go_forward(ppu.ppu_ctrl.vram_step());
+                false
+            }
+        )
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[should_panic]
+    fn test_ctrl_read() {
+        let rom = crate::rom::tests::mock();
+        let mut ppu = PPU::new(None, &rom);
+        ppu.read_register(0x2000, &rom);
+    }
+
+    #[test]
+    fn test_ctrl_write() {
+        let mut rom = crate::rom::tests::mock();
+        let mut ppu = PPU::new(None, &rom);
+
+        ppu.write_register(0x3000, 0xAA, &mut rom);
+        assert_eq!(ppu.ppu_ctrl.nmi(), false);
+
+        ppu.stop_waiting();
+
+        ppu.write_register(0x3000, 0xAA, &mut rom);
+        assert_eq!(ppu.ppu_ctrl.nmi(), true);
+        assert_eq!(ppu.ppu_ctrl.large_sprite(), true);
+        assert_eq!(ppu.ppu_ctrl.background_pattern(), 0);
+        assert_eq!(ppu.ppu_ctrl.vram_step(), 1);
+        assert_eq!(ppu.ppu_ctrl.nt_base(), 0x2800);
+
+        ppu.write_register(0x3000, 0x55, &mut rom);
+        assert_eq!(ppu.ppu_ctrl.nmi(), false);
+        assert_eq!(ppu.ppu_ctrl.large_sprite(), false);
+        assert_eq!(ppu.ppu_ctrl.background_pattern(), 0x1000);
+        assert_eq!(ppu.ppu_ctrl.sprite_pattern(), 0);
+        assert_eq!(ppu.ppu_ctrl.vram_step(), 32);
+        assert_eq!(ppu.ppu_ctrl.nt_base(), 0x2400);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_mask_read() {
+        let rom = crate::rom::tests::mock();
+        let mut ppu = PPU::new(None, &rom);
+        ppu.read_register(0x2101, &rom);
+    }
+
+    #[test]
+    fn test_mask_write() {
+        let mut rom = crate::rom::tests::mock();
+        let mut ppu = PPU::new(None, &rom);
+
+        ppu.write_register(0x3001, 0xAA, &mut rom);
+        assert_eq!(ppu.ppu_mask.show_background(), false);
+
+        ppu.stop_waiting();
+
+        ppu.write_register(0x3001, 0xAA, &mut rom);
+        assert_eq!(ppu.ppu_mask.show_background(), true);
+        assert_eq!(ppu.ppu_mask.show_sprite_left(), false);
+        assert_eq!(ppu.ppu_mask.show_background_left(), true);
+        assert_eq!(ppu.ppu_mask.normal_color(), true);
+    }
+
+    #[test]
+    fn test_status_read() {
+        let rom = crate::rom::tests::mock();
+        let mut ppu = PPU::new(None, &rom);
+        let status = ppu.read_register(0x2002, &rom);
+        assert_eq!(status, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_status_write() {
+        let mut rom = crate::rom::tests::mock();
+        let mut ppu = PPU::new(None, &rom);
+        ppu.write_register(0x2002, 0, &mut rom);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_scroll_read() {
+        let rom = crate::rom::tests::mock();
+        let mut ppu = PPU::new(None, &rom);
+        ppu.read_register(0x2005, &rom);
+    }
+
+    #[test]
+    fn test_scroll_write() {
+        let mut rom = crate::rom::tests::mock();
+        let mut ppu = PPU::new(None, &rom);
+
+        ppu.write_register(0x2005, 1, &mut rom);
+        assert_eq!(ppu.ppu_scroll.x(), 0);
+
+        ppu.stop_waiting();
+
+        ppu.write_register(0x2005, 1, &mut rom);
+        ppu.write_register(0x2005, 2, &mut rom);
+        assert_eq!(ppu.ppu_scroll.x(), 1);
+        assert_eq!(ppu.ppu_scroll.y(), 2);
+
+        ppu.write_register(0x2005, 3, &mut rom);
+        ppu.write_register(0x2005, 4, &mut rom);
+        assert_eq!(ppu.ppu_scroll.x(), 3);
+        assert_eq!(ppu.ppu_scroll.y(), 4);
+    }
 }
