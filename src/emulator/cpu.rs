@@ -1,9 +1,3 @@
-use std::rc::Rc;
-use crate::conf::Configuration;
-use super::instruction::InstructionSet;
-use crate::emulator::bus::Bus;
-use crate::log::console_log;
-
 #[allow(non_snake_case)]
 pub struct CPU {
     A: u8,

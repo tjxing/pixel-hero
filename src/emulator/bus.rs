@@ -1,12 +1,10 @@
 use web_sys::CanvasRenderingContext2d;
-use std::rc::Rc;
 use crate::conf::Configuration;
 use super::cpu::CPU;
 use super::ppu::PPU;
 use super::memory::Memory;
 use super::registers::Registers;
 use crate::rom::Rom;
-use crate::log::console_log;
 
 pub struct Bus {
     cpu: CPU,
@@ -22,7 +20,7 @@ pub struct Bus {
 }
 
 impl Bus {
-    pub fn new(rom: Rom, ctx: Option<CanvasRenderingContext2d>, conf: &Configuration) -> Bus {
+    pub fn new(rom: Rom, ctx: Option<CanvasRenderingContext2d>, _conf: &Configuration) -> Bus {
         let mut bus = Bus {
             cpu: CPU::new(),
             ppu: PPU::new(ctx, &rom),
@@ -84,10 +82,6 @@ impl Bus {
 
     pub fn write_memory(&mut self, addr: u8, v: u8) {
         self.memory.write_zero_page(addr, v);
-    }
-
-    pub fn current_instruction(&mut self) -> u8 {
-        self.read(self.cpu.pc())
     }
 
     pub fn immediate_map(&mut self) -> u8 {
@@ -224,10 +218,6 @@ impl Bus {
 
     pub fn cpu_mut(&mut self) -> &mut CPU {
         &mut self.cpu
-    }
-
-    pub fn ppu(&self) -> &PPU {
-        &self.ppu
     }
 
     pub fn ppu_mut(&mut self) -> &mut PPU {

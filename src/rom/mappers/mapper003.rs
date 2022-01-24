@@ -1,6 +1,5 @@
 use crate::rom::mapper::Mapper;
 use crate::rom::slice::Slice;
-use crate::log::console_log;
 
 const K: u16 = 1024;
 const BANK_SIZE: u16 = 8 * K;
@@ -33,7 +32,7 @@ impl Mapper for Mapper003 {
         (self.read_prg)(&self.prg_rom, addr)
     }
 
-    fn write_prg(&mut self, addr: u16, value: u8) {
+    fn write_prg(&mut self, _addr: u16, value: u8) {
         self.bank = value & 0x03;
     }
 

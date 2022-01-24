@@ -2,19 +2,13 @@ use wasm_bindgen::prelude::{wasm_bindgen, Closure};
 use web_sys::{CanvasRenderingContext2d, ImageData, window};
 use crate::conf::Configuration;
 use crate::i18n::Message;
-use std::rc::Rc;
 use crate::rom::{Rom, Timing};
 use super::bus::Bus;
-use crate::log::console_log;
 use crate::emulator::instruction::{InstructionSet, Instruction};
-use std::cell::RefCell;
-use std::ops::DerefMut;
 use js_sys::Function;
 use wasm_bindgen::{JsCast, Clamped};
-use crate::emulator::renderer::Renderer;
 use js_sys::Math::random;
 use crate::init::{RAW_WIDTH, RAW_HEIGHT};
-use std::fmt::Write;
 
 #[wasm_bindgen]
 pub struct Emulator {
@@ -124,7 +118,7 @@ pub fn new_emulator(ctx: CanvasRenderingContext2d, conf: Configuration) -> Emula
     }
 }
 
-fn draw_splash(ctx: &CanvasRenderingContext2d, conf: &Configuration) {
+fn draw_splash(ctx: &CanvasRenderingContext2d, _conf: &Configuration) {
     const DATA_LEN: usize = RAW_WIDTH * RAW_HEIGHT * 4;
     let mut data: [u8; DATA_LEN] = [0; DATA_LEN];
     for i in 0..RAW_WIDTH {

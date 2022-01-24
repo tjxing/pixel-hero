@@ -2,7 +2,6 @@ use crate::i18n::Message;
 use std::rc::Rc;
 use super::slice::Slice;
 use crate::rom::mapper::{find_mapper, Mapper};
-use crate::log::console_log;
 
 const K: u32 = 1024;
 
@@ -25,6 +24,7 @@ pub enum Timing {
     Dendy
 }
 
+#[allow(dead_code)]
 pub struct Rom {
     prg_rom_size: u32,
     chr_rom_size: u32,

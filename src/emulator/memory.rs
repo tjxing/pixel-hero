@@ -1,5 +1,3 @@
-use crate::log::console_log;
-
 const MEMORY_SIZE: usize = 2048;
 
 pub struct Memory {

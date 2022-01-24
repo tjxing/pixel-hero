@@ -1,13 +1,13 @@
-use crate::log::console_log;
+const SIZE: usize = 32;
 
 pub struct Palette {
-    data: [u8; 32]
+    data: [u8; SIZE]
 }
 
 impl Palette {
     pub fn new() -> Self {
         Self {
-            data: [0; 32]
+            data: [0; SIZE]
         }
     }
 

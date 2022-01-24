@@ -1,8 +1,7 @@
 use crate::rom::Rom;
-use crate::log::console_log;
 
 pub struct Mirroring {
-    read: fn(u16, memory: &[u8], rom: &Rom) -> u8,
+    read: fn(u16, memory: &[u8], _rom: &Rom) -> u8,
     write: fn(u16, u8, memory: &mut [u8], rom: &mut Rom)
 }
 
@@ -35,7 +34,7 @@ pub fn select_mirroring(rom: &Rom) -> Mirroring {
     }
 }
 
-fn horizontal_mirroring_read(addr: u16, memory: &[u8], rom: &Rom) -> u8 {
+fn horizontal_mirroring_read(addr: u16, memory: &[u8], _rom: &Rom) -> u8 {
     let index = addr & 0x0BFF;
     if index >= 0x0800 {
         memory[(index - 0x0400) as usize]
@@ -44,7 +43,7 @@ fn horizontal_mirroring_read(addr: u16, memory: &[u8], rom: &Rom) -> u8 {
     }
 }
 
-fn horizontal_mirroring_write(addr: u16, v: u8, memory: &mut [u8], rom: &mut Rom) {
+fn horizontal_mirroring_write(addr: u16, v: u8, memory: &mut [u8], _rom: &mut Rom) {
     let index = addr & 0x0BFF;
     if index >= 0x0800 {
         memory[(index - 0x0400) as usize] = v;
@@ -53,10 +52,10 @@ fn horizontal_mirroring_write(addr: u16, v: u8, memory: &mut [u8], rom: &mut Rom
     }
 }
 
-fn vertical_mirroring_read(addr: u16, memory: &[u8], rom: &Rom) -> u8 {
+fn vertical_mirroring_read(addr: u16, memory: &[u8], _rom: &Rom) -> u8 {
     memory[(addr & 0x07FF) as usize]
 }
 
-fn vertical_mirroring_write(addr: u16, v: u8, memory: &mut [u8], rom: &mut Rom) {
+fn vertical_mirroring_write(addr: u16, v: u8, memory: &mut [u8], _rom: &mut Rom) {
     memory[(addr & 0x07FF) as usize] = v;
 }

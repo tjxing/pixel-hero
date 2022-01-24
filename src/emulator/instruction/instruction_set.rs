@@ -1,6 +1,5 @@
 use crate::emulator::bus::Bus;
 use super::instruction::Instruction;
-use crate::log::console_log;
 
 pub struct InstructionSet {
     instructions: [Instruction; 256]

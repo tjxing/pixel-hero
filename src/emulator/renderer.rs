@@ -1,6 +1,5 @@
 use wasm_bindgen::Clamped;
 use web_sys::{CanvasRenderingContext2d, ImageData};
-use js_sys::Math::random;
 use crate::init::{RAW_WIDTH, RAW_HEIGHT};
 
 const CHANNELS: usize = 4;

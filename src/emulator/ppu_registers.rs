@@ -1,5 +1,3 @@
-use crate::log::console_log;
-
 // PPU_CTRL
 pub struct PPUControl {
     nt_base: u16,
@@ -41,6 +39,7 @@ impl PPUControl {
         self.vram_step
     }
 
+    #[allow(dead_code)]
     pub fn large_sprite(&self) -> bool {
         self.large_sprite
     }
@@ -121,11 +120,6 @@ impl PPUStatus {
             vertical_blank: false,
             sprite_0_hit: false
         }
-    }
-
-    pub fn set(&mut self, value: u8) {
-        self.value = value;
-        self.vertical_blank = value & 0x80 > 0;
     }
 
     pub fn value(&self) -> u8 {

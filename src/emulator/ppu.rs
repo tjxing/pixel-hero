@@ -1,10 +1,7 @@
 use web_sys::CanvasRenderingContext2d;
 use super::renderer::Renderer;
-use std::cell::RefCell;
-use crate::log::console_log;
 use crate::rom::Rom;
 use crate::emulator::mirroring::{Mirroring, select_mirroring};
-use std::fmt::Write;
 use crate::emulator::ppu_registers::{PPUControl, PPUMask, PPUStatus, PPUScroll, PPUAddress};
 use crate::emulator::palette::Palette;
 use crate::init::{RAW_WIDTH, RAW_HEIGHT};
