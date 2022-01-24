@@ -11,8 +11,13 @@ impl Palette {
         }
     }
 
-    pub fn read(&self, addr: u16) -> u8 {
-        self.data[(addr & 0x1F) as usize]
+    pub fn read(&self, addr: u16, grey: bool) -> u8 {
+        let result = self.data[(addr & 0x1F) as usize];
+        if grey {
+            result & 0x30
+        } else {
+            result
+        }
     }
 
     pub fn write(&mut self, addr: u16, v: u8) {

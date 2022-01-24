@@ -59,34 +59,50 @@ impl PPUControl {
 
 // PPU_Mask
 pub struct PPUMask {
-    normal_color: bool,
+    grey_scale: bool,
     show_background_left: bool,
     show_sprite_left: bool,
     show_background: bool,
-    show_sprite: bool
+    show_sprite: bool,
+    emphasize_red: bool,
+    emphasize_green: bool,
+    emphasize_blue: bool,
+    ntsc: bool
 }
 
 impl PPUMask {
-    pub fn new() -> Self {
+    pub fn new(ntsc: bool) -> Self {
         Self {
-            normal_color: true,
+            grey_scale: false,
             show_background_left: false,
             show_sprite_left: false,
             show_background: false,
-            show_sprite: false
+            show_sprite: false,
+            emphasize_red: false,
+            emphasize_green: false,
+            emphasize_blue: false,
+            ntsc
         }
     }
 
     pub fn set(&mut self, value: u8) {
-        self.normal_color = value & 0x01 == 0;
+        self.grey_scale = value & 0x01 > 0;
         self.show_background_left = value & 0x02 > 0;
         self.show_sprite_left = value & 0x04 > 0;
         self.show_background = value & 0x08 > 0;
         self.show_sprite = value & 0x10 > 0;
+        self.emphasize_blue = value & 0x80 > 0;
+        if self.ntsc {
+            self.emphasize_green = value & 0x40 > 0;
+            self.emphasize_red = value & 0x20 > 0;
+        } else {
+            self.emphasize_green = value & 0x20 > 0;
+            self.emphasize_red = value & 0x40 > 0;
+        }
     }
 
-    pub fn normal_color(&self) -> bool {
-        self.normal_color
+    pub fn grey_scale(&self) -> bool {
+        self.grey_scale
     }
 
     pub fn show_background_left(&self) -> bool {
@@ -103,6 +119,18 @@ impl PPUMask {
 
     pub fn show_sprite(&self) -> bool {
         self.show_sprite
+    }
+
+    pub fn emphasize_red(&self) -> bool {
+        self.emphasize_red
+    }
+
+    pub fn emphasize_green(&self) -> bool {
+        self.emphasize_green
+    }
+
+    pub fn emphasize_blue(&self) -> bool {
+        self.emphasize_blue
     }
 }
 

@@ -2,6 +2,7 @@ use crate::i18n::Message;
 use std::rc::Rc;
 use super::slice::Slice;
 use crate::rom::mapper::{find_mapper, Mapper};
+use crate::rom::Timing;
 
 const K: u32 = 1024;
 
@@ -15,13 +16,6 @@ enum Console {
     VsSystem,
     PlayChoice10,
     Extended
-}
-
-pub enum Timing {
-    NTSC,
-    PAL,
-    MultipleRegion,
-    Dendy
 }
 
 #[allow(dead_code)]

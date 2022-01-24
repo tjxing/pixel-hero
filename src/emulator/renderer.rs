@@ -1,5 +1,6 @@
 use wasm_bindgen::Clamped;
 use web_sys::{CanvasRenderingContext2d, ImageData};
+use crate::emulator::ppu_registers::PPUMask;
 use crate::init::{RAW_WIDTH, RAW_HEIGHT};
 
 const CHANNELS: usize = 4;
@@ -52,32 +53,55 @@ impl Renderer {
         self.bg_buffer[index as usize] == 0xFF
     }
 
-    pub fn merge_line(&mut self, line: u8, bg_color: u8) {
-        for i in 0..RAW_WIDTH {
-            let bg = self.bg_buffer[i];
-            let sprite = self.sprite_buffer[i];
-            let color = if bg == 0xFF {
-                if sprite.0 == 0xFF {
-                    bg_color
+    pub fn merge_line(&mut self, line: u8, bg_color: u8, mask: &PPUMask) {
+        if mask.emphasize_red() && mask.emphasize_green() && mask.emphasize_blue() {
+            for i in 0..RAW_WIDTH {
+                let index = CHANNELS * RAW_WIDTH * line as usize + CHANNELS * i;
+                self.data[index] = 0;
+                self.data[index + 1] = 0;
+                self.data[index + 2] = 0;
+                self.data[index + 3] = 255;
+            }
+        } else {
+            for i in 0..RAW_WIDTH {
+                let bg = self.bg_buffer[i];
+                let sprite = self.sprite_buffer[i];
+                let color = if bg == 0xFF {
+                    if sprite.0 == 0xFF {
+                        bg_color
+                    } else {
+                        sprite.0
+                    }
                 } else {
-                    sprite.0
-                }
-            } else {
-                if sprite.0 < 0xFF && sprite.1 {
-                    sprite.0
-                } else {
-                    bg
-                }
-            };
+                    if sprite.0 < 0xFF && sprite.1 {
+                        sprite.0
+                    } else {
+                        bg
+                    }
+                };
 
-            let index = CHANNELS * RAW_WIDTH * line as usize + CHANNELS * i;
-            let c = color as usize * 3;
-            self.data[index] = COLORS[c];
-            self.data[index + 1] = COLORS[c + 1];
-            self.data[index + 2] = COLORS[c + 2];
-            self.data[index + 3] = 255;
+                let index = CHANNELS * RAW_WIDTH * line as usize + CHANNELS * i;
+                let c = color as usize * 3;
+                if mask.emphasize_red() {
+                    self.data[index] = COLORS[c];
+                    self.data[index + 1] = 0;
+                    self.data[index + 2] = 0;
+                } else if mask.emphasize_green() {
+                    self.data[index] = 0;
+                    self.data[index + 1] = COLORS[c + 1];
+                    self.data[index + 2] = 0;
+                } else if mask.emphasize_blue() {
+                    self.data[index] = 0;
+                    self.data[index + 1] = 0;
+                    self.data[index + 2] = COLORS[c + 2];
+                } else {
+                    self.data[index] = COLORS[c];
+                    self.data[index + 1] = COLORS[c + 1];
+                    self.data[index + 2] = COLORS[c + 2];
+                }
+                self.data[index + 3] = 255;
+            }
         }
-
     }
 
     pub fn render(&self) {

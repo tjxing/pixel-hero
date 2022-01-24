@@ -1,6 +1,6 @@
 use web_sys::CanvasRenderingContext2d;
 use super::renderer::Renderer;
-use crate::rom::Rom;
+use crate::rom::{Rom, Timing};
 use crate::emulator::mirroring::{Mirroring, select_mirroring};
 use crate::emulator::ppu_registers::{PPUControl, PPUMask, PPUStatus, PPUScroll, PPUAddress};
 use crate::emulator::palette::Palette;
@@ -67,7 +67,7 @@ impl PPU {
             wait_cpu: true,
             even: true,
             ppu_ctrl: PPUControl::new(),
-            ppu_mask: PPUMask::new(),
+            ppu_mask: PPUMask::new(rom.timing() == Timing::NTSC),
             ppu_status: PPUStatus::new(),
             ppu_scroll: PPUScroll::new(),
             ppu_addr: PPUAddress::new(),
@@ -99,7 +99,7 @@ impl PPU {
                     } else {
                         let line = (self.clk_counter / SCANLINE_CLK) as u16;
 
-                        if self.ppu_mask.show_background() && tick < 257 {
+                        if self.ppu_mask.show_background() && tick < 257 && (self.ppu_mask.show_background_left() || tick > 8) {
                             let mut x = tick - 1 + self.ppu_scroll.x() as u16;
                             let mut y = line + self.ppu_scroll.y() as u16;
                             let mut nt_base = self.ppu_ctrl.nt_base();
@@ -134,7 +134,8 @@ impl PPU {
                             let c = (((pattern_high >> (7 - pattern_offset)) & 0x01) << 1)
                                      | ((pattern_low >> (7 - pattern_offset)) & 0x01);
                             if c > 0 {
-                                let color = self.palette.read(palette_addr + c as u16);
+                                let color = self.palette.read(palette_addr + c as u16,
+                                                              self.ppu_mask.grey_scale());
                                 self.renderer.set_background((tick - 1) as u8, color);
                             }
                         }
@@ -172,9 +173,10 @@ impl PPU {
                                             | ((pattern_low >> i) & 0x01)
                                     };
                                     if c > 0 {
-                                        let color = self.palette.read(palette_addr + c as u16);
+                                        let color = self.palette.read(palette_addr + c as u16,
+                                                                      self.ppu_mask.grey_scale());
                                         let x_index = x as u16 + i as u16;
-                                        if x_index < RAW_WIDTH as u16 {
+                                        if x_index < RAW_WIDTH as u16 && (self.ppu_mask.show_sprite_left() || x_index >= 8) {
                                             let front = sprite_attr & 0x20 == 0;
                                             self.renderer.set_sprite(x_index as u8, color, front);
                                             if !self.ppu_status.sprite_0_hit()
@@ -189,9 +191,10 @@ impl PPU {
                             }
                         }
 
-                        if tick == SCANLINE_CLK as u16 - 1
-                            && (self.ppu_mask.show_sprite() || self.ppu_mask.show_background()) {
-                            self.renderer.merge_line(line as u8, self.palette.read(0x3F00));
+                        if tick == SCANLINE_CLK as u16 - 1 {
+                            self.renderer.merge_line(line as u8,
+                                                     self.palette.read(0x3F00, self.ppu_mask.grey_scale()),
+                                                     &self.ppu_mask);
                         }
                     }
                 },
@@ -283,7 +286,7 @@ impl PPU {
             let address = addr & 0x0FFF;
             (self.mirroring.read())(address, &self.memory, &rom)
         } else {
-            self.palette.read(addr)
+            self.palette.read(addr, self.ppu_mask.grey_scale())
         }
     }
 
@@ -490,7 +493,7 @@ mod tests {
         assert_eq!(ppu.ppu_mask.show_background(), true);
         assert_eq!(ppu.ppu_mask.show_sprite_left(), false);
         assert_eq!(ppu.ppu_mask.show_background_left(), true);
-        assert_eq!(ppu.ppu_mask.normal_color(), true);
+        assert_eq!(ppu.ppu_mask.grey_scale(), false);
     }
 
     #[test]
