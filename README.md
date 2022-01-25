@@ -1,5 +1,8 @@
 # pixel-hero
+
 A web-based NES emulator in WebAssembly
+
+[![GitHub Action Build](https://github.com/tjxing/pixel-hero/actions/workflows/main.yml/badge.svg?branch=main&event=push)](https://github.com/tjxing/pixel-hero/actions/workflows/main.yml?query=branch%3Amain+event%3Apush)
 
 ## Note
 

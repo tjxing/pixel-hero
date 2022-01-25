@@ -1,0 +1,17 @@
+name: build and test
+on: 
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup
+        run: cargo install wasm-pack
+      - name: build
+        run: wasm-pack build
+      - name: unittest
+        run: cargo test --verbose
