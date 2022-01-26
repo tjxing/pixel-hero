@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  RUSTFLAGS: -D warnings
-
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -18,5 +15,9 @@ jobs:
         run: cargo install wasm-pack
       - name: build
         run: wasm-pack build
+        env:
+          RUSTFLAGS: -D warnings
       - name: unittest
         run: cargo test --verbose
+        env:
+          RUSTFLAGS: -A dead-code -D warnings
