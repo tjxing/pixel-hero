@@ -118,7 +118,7 @@ impl PPU {
                             let attr = self.read(
                                 nt_base + 960 + nt_offset_y / 4 * 8 + nt_offset_x / 4,
                                 rom);
-                            let attr_offset = nt_offset_x % 4 / 2 * 4 + nt_offset_y % 4 / 2 * 2;
+                            let attr_offset = nt_offset_x % 4 / 2 * 2 + nt_offset_y % 4 / 2 * 4;
                             let palette_index= (attr >> attr_offset) & 0x03;
                             let palette_addr = 0x3F00 + 4 * palette_index as u16;
 
