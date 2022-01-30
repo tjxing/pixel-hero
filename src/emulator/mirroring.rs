@@ -59,3 +59,57 @@ fn vertical_mirroring_read(addr: u16, memory: &[u8], _rom: &Rom) -> u8 {
 fn vertical_mirroring_write(addr: u16, v: u8, memory: &mut [u8], _rom: &mut Rom) {
     memory[(addr & 0x07FF) as usize] = v;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_horizontal_read_write() {
+        let mut rom = crate::rom::tests::mock();
+        let mut memory: [u8; 2048] = [0; 2048];
+
+        for i in 0..0x0400 as u16 {
+            let v = rand::random::<u8>();
+            horizontal_mirroring_write(i, v, &mut memory, &mut rom);
+            assert_eq!(horizontal_mirroring_read(0x0400 + i, &memory, &rom), v);
+
+            let v = rand::random::<u8>();
+            horizontal_mirroring_write(0x0400 + i, v, &mut memory, &mut rom);
+            assert_eq!(horizontal_mirroring_read(i, &memory, &rom), v);
+
+            let v = rand::random::<u8>();
+            horizontal_mirroring_write(0x0800 + i, v, &mut memory, &mut rom);
+            assert_eq!(horizontal_mirroring_read(0x0C00 + i, &memory, &rom), v);
+
+            let v = rand::random::<u8>();
+            horizontal_mirroring_write(0x0C00 + i, v, &mut memory, &mut rom);
+            assert_eq!(horizontal_mirroring_read(0x0800 + i, &memory, &rom), v);
+        }
+    }
+
+    #[test]
+    fn test_vertical_read_write() {
+        let mut rom = crate::rom::tests::mock();
+        let mut memory: [u8; 2048] = [0; 2048];
+
+        for i in 0..0x0400 as u16 {
+            let v = rand::random::<u8>();
+            vertical_mirroring_write(i, v, &mut memory, &mut rom);
+            assert_eq!(vertical_mirroring_read(0x0800 + i, &memory, &rom), v);
+
+            let v = rand::random::<u8>();
+            vertical_mirroring_write(0x0800 + i, v, &mut memory, &mut rom);
+            assert_eq!(vertical_mirroring_read(i, &memory, &rom), v);
+
+            let v = rand::random::<u8>();
+            vertical_mirroring_write(0x0400 + i, v, &mut memory, &mut rom);
+            assert_eq!(vertical_mirroring_read(0x0C00 + i, &memory, &rom), v);
+
+            let v = rand::random::<u8>();
+            vertical_mirroring_write(0x0C00 + i, v, &mut memory, &mut rom);
+            assert_eq!(vertical_mirroring_read(0x0400 + i, &memory, &rom), v);
+        }
+    }
+
+}
