@@ -1,6 +1,6 @@
 use wasm_bindgen::Clamped;
 use web_sys::{CanvasRenderingContext2d, ImageData};
-use crate::emulator::ppu_registers::PPUMask;
+use crate::emulator::ppu::registers::PPUMask;
 use crate::init::{RAW_WIDTH, RAW_HEIGHT};
 
 const CHANNELS: usize = 4;

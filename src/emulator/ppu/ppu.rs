@@ -1,9 +1,9 @@
 use web_sys::CanvasRenderingContext2d;
 use super::renderer::Renderer;
 use crate::rom::{Rom, Timing};
-use crate::emulator::mirroring::{Mirroring, select_mirroring};
-use crate::emulator::ppu_registers::{PPUControl, PPUMask, PPUStatus, PPUScroll, PPUAddress};
-use crate::emulator::palette::Palette;
+use crate::emulator::ppu::mirroring::{Mirroring, select_mirroring};
+use crate::emulator::ppu::registers::{PPUControl, PPUMask, PPUStatus, PPUScroll, PPUAddress};
+use crate::emulator::ppu::palette::Palette;
 use crate::init::{RAW_WIDTH, RAW_HEIGHT};
 
 type Register = (fn(&mut PPU, &Rom) -> u8, fn(&mut PPU, u8, &mut Rom) -> bool);
@@ -132,7 +132,7 @@ impl PPU {
 
                             let pattern_offset = x % 8;
                             let c = (((pattern_high >> (7 - pattern_offset)) & 0x01) << 1)
-                                     | ((pattern_low >> (7 - pattern_offset)) & 0x01);
+                                | ((pattern_low >> (7 - pattern_offset)) & 0x01);
                             if c > 0 {
                                 let color = self.palette.read(palette_addr + c as u16,
                                                               self.ppu_mask.grey_scale());
