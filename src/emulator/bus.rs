@@ -1,16 +1,18 @@
 use web_sys::CanvasRenderingContext2d;
 use crate::conf::Configuration;
+use crate::emulator::controller::Controller;
 use super::cpu::CPU;
 use super::ppu::PPU;
+use super::apu::APU;
 use super::memory::Memory;
-use super::registers::Registers;
 use crate::rom::Rom;
 
 pub struct Bus {
     cpu: CPU,
     ppu: PPU,
+    apu: APU,
     memory: Memory,
-    registers: Registers,
+    controller: Controller,
     rom: Rom,
 
     nmi_flag: bool,
@@ -24,8 +26,9 @@ impl Bus {
         let mut bus = Bus {
             cpu: CPU::new(),
             ppu: PPU::new(ctx, &rom),
+            apu: APU::new(),
             memory: Memory::new(),
-            registers: Registers::new(),
+            controller: Controller::new(),
             rom,
             nmi_flag: false,
             brk_flag: false,
@@ -43,10 +46,14 @@ impl Bus {
             self.memory.read(addr)
         } else if mark == 0x2000 || mark == 0x3000 {
             self.ppu.read_register(addr, &self.rom)
-        } else if addr < 0x401F {
-            self.registers.read(addr)
-        } else {
+        } else if addr >= 0x4020 {
             self.rom.mapper().read_prg(addr)
+        } else if addr == 0x4015 {
+            self.apu.read_status()
+        } else if addr == 0x4016 || addr == 0x4017 {
+            self.controller.read_joy((addr - 0x4016) as u8)
+        } else {
+            panic!("${:X} is not readable.", addr);
         }
     }
 
@@ -58,21 +65,16 @@ impl Bus {
             if self.ppu.write_register(addr, v, &mut self.rom) {
                 self.nmi_flag = true;
             }
-        } else if addr < 0x401F {
-            if addr == 0x4014 {
-                let base = (v as u16) << 8;
-                for i in 0x00..0xFF as u16 {
-                    let v = self.read(base | i);
-                    if self.ppu.fill_oam(v) == 0 {
-                        break;
-                    }
-                }
-                self.dma_clk = 513;
-            } else {
-                self.registers.write(addr, v);
-            }
-        } else {
+        } else if addr >= 0x4020 {
             self.rom.mapper_mut().write_prg(addr, v);
+        } else if addr == 0x4014 {
+            self.start_dma(v);
+        } else if addr == 0x4016 {
+            self.controller.write_joy_strode(v);
+        } else if addr <= 0x4017 {
+            self.apu.write_register(addr, v);
+        } else {
+            panic!("${:X} is not writable.", addr);
         }
     }
 
@@ -201,6 +203,17 @@ impl Bus {
         }
     }
 
+    pub fn start_dma(&mut self, base: u8) {
+        let b = (base as u16) << 8;
+        for i in 0x00..0xFF as u16 {
+            let v = self.read(b | i);
+            if self.ppu.fill_oam(v) == 0 {
+                break;
+            }
+        }
+        self.dma_clk = 513;
+    }
+
     pub fn check_dma(&mut self) -> u8 {
         if self.dma_clk >= 110 {
             self.dma_clk -= 110;
@@ -220,8 +233,8 @@ impl Bus {
         &mut self.cpu
     }
 
-    pub fn ppu_mut(&mut self) -> &mut PPU {
-        &mut self.ppu
+    pub fn ppu_ready(&mut self) {
+        self.ppu.stop_waiting()
     }
 }
 

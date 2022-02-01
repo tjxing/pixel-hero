@@ -86,7 +86,7 @@ fn wait_ppu(bus: &mut Bus, instructions: &InstructionSet) {
         let inst = current_instruction(bus, instructions);
         c -= inst.apply(bus) as i32;
     }
-    bus.ppu_mut().stop_waiting();
+    bus.ppu_ready();
 }
 
 fn make_frame(mut bus: Bus, instructions: InstructionSet) -> Closure<dyn FnMut()> {
