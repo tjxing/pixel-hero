@@ -23,3 +23,20 @@ impl PartialEq<Timing> for &Timing {
     }
 
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    #[test]
+    fn test_eq() {
+        let x = Timing::NTSC;
+        let y = Timing:: PAL;
+        assert_eq!(false, x == y);
+        assert_eq!(false, &x == &y);
+
+        let y = Timing::NTSC;
+        assert_eq!(true, x == y);
+        assert_eq!(true, &x == &y);
+    }
+}
